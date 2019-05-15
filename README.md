@@ -29,7 +29,7 @@ d) Enable automatic discovery and selected inclusion of devices* using the Home 
 7) Support for JSON payloads
 8) More complete support for homie3 specification from Hubitat - enough so openHAB# discovery is happy.
 
-  #I have not yet tried openHAB homie discovery but I suspect it will not work currently.  You will need at lease openHAB 2.5 milestone 1 build and maybe later and for various stability reasons I can't recommend you upgrade to that - definately not post milestone 1 builds.  Also I suspect I need to include another couple of topics to my homie3 implementation ($nodes $type $properties and maybe more)
+  #I have not yet tried openHAB homie3 discovery but I suspect it will not work currently.  You will need at least openHAB 2.5 milestone 1 build, maybe later, and for various stability reasons I can't recommend you upgrade to that - and definately not post milestone 1 builds.  Also I suspect I need to better support some topics in the homie3 specification ($nodes $type $properties and maybe more)
 
 
 # Instructions:
