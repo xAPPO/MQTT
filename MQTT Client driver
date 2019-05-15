@@ -174,7 +174,7 @@ def parse(String description) {
 		if (topic[4]=="set") {
 				 def evt12 = createEvent(name: "Command", value: topic[2], data: [state: payload[0], cmd: topic[3]])
 				 pause (state.delay) // pace
-			log.error "Ive got this"
+			//log.error "Ive got this"
 				 return evt12					
 				}
 				else {
