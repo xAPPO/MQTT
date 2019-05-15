@@ -192,54 +192,14 @@ HA users will need to include the following in your HA installation.
 
 Configure HA to use MQTT statestream by including the following in your configuration.yaml (choose your own base_topic: name)
 
-mqtt_statestream:
+	mqtt_statestream:
 
-  base_topic: HAStateStream50
+  	  base_topic: HAStateStream50
   
-  publish_attributes: true
+  	  publish_attributes: true
   
-Include the following in your automations.yaml or if you don't use one then in configuration.yaml
+Add the included "automations.yaml" to your automations.yaml file in HA , or if you don't use this then to configuration.yaml.
 This enables bidirectional control via statestream
-
-
-	- alias: Control switches via MQTT
-	  trigger:
-		platform: mqtt
-		topic: +/switch/+/state/cmd
-	  action:
-		- service_template: >
-			homeassistant.turn_{{trigger.payload}}
-		  data_template:
-			entity_id: >-
-			  {{ trigger.topic.split('/')[-4] }}.{{ trigger.topic.split('/')[-3] }}
-			  
-
-	- alias: Control lights state via MQTT
-	  trigger:
-		platform: mqtt
-		topic: +/light/+/state/cmd
-	  action:
-		- service_template: >
-			homeassistant.turn_{{trigger.payload}}
-		  data_template:
-			entity_id: >-
-			  {{ trigger.topic.split('/')[-4] }}.{{ trigger.topic.split('/')[-3] }}
-
-
-	- alias: Control lights brightness via MQTT
-	  trigger:
-		platform: mqtt
-		topic: +/light/+/brightness/cmd
-	  action:
-		- service_template: >
-			homeassistant.turn_on
-		  data_template:
-			brightness: '{{trigger.payload}}'
-			entity_id: >-
-			  {{ trigger.topic.split('/')[-4] }}.{{ trigger.topic.split('/')[-3] }}
-
-
-
 
 __________________________________________________________________________________________________________________________
 
