@@ -66,8 +66,7 @@ I recommend choosing just one for now.  a) is the easiest.
 
 Then follow the option a)-d) below that you need.....
 
-Lastly two app configuration options re. 'LogLevel' and importantly 'Deleting MQTT discovered devices' are discussed right at the end of these
-instructions. Please read those too.
+Lastly two app configuration options re. 'LogLevel' and importantly 'Deleting MQTT discovered devices' are discussed right at the end of these instructions in 'Additional Notes'.  Please read those too.
 __________________________________________________________________________________________________________________________
 # a) Enabling inbuilt 'real' HE devices*  to publish and be controllable through MQTT
  
@@ -244,6 +243,7 @@ This enables bidirectional control via statestream
 
 __________________________________________________________________________________________________________________________
 
+# Additional Notes:
 
 After sucessful configuration and Startup you should see something like the following in the log at 'INFO' level
 
