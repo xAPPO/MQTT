@@ -1,0 +1,35 @@
+- alias: Control switches via MQTT
+  trigger:
+	platform: mqtt
+	topic: +/switch/+/state/cmd
+  action:
+	- service_template: >
+		homeassistant.turn_{{trigger.payload}}
+	  data_template:
+		entity_id: >-
+		  {{ trigger.topic.split('/')[-4] }}.{{ trigger.topic.split('/')[-3] }}
+		  
+
+- alias: Control lights state via MQTT
+  trigger:
+	platform: mqtt
+	topic: +/light/+/state/cmd
+  action:
+	- service_template: >
+		homeassistant.turn_{{trigger.payload}}
+	  data_template:
+		entity_id: >-
+		  {{ trigger.topic.split('/')[-4] }}.{{ trigger.topic.split('/')[-3] }}
+
+
+- alias: Control lights brightness via MQTT
+  trigger:
+	platform: mqtt
+	topic: +/light/+/brightness/cmd
+  action:
+	- service_template: >
+		homeassistant.turn_on
+	  data_template:
+		brightness: '{{trigger.payload}}'
+		entity_id: >-
+		  {{ trigger.topic.split('/')[-4] }}.{{ trigger.topic.split('/')[-3] }}
