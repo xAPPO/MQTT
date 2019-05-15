@@ -76,7 +76,7 @@ ________________________________________________________________________________
  
 Hubitat Basic:
  
-	Hubitat/HubName/deviceName/capability/<value>            that reports current state
+	Hubitat/HubName/deviceName/capability/<value>           that reports current state
 	
 	Hubitat/HubName/deviceName/capability/set/<value>       that allows you to send commands to make a state change
 
@@ -176,7 +176,6 @@ The app will then start up which will take around a minute and automatically dis
 It will then populate the discovered device dropdown lists so you can later select which devices you are interested in.
 
 Now restart the app on the second page you will see four lists... choose the MQTT devices you wish to 'mirror' within Hubitat.
-The number afterwards in [] is the total number of discovered devices (of type onoff and dim).
 
 Discovered homie switches
 
@@ -188,9 +187,9 @@ Discovered HA lights
 
 After selecting you devices and clicking 'Done' all these will be added to Hubitat, providing realtime status and control.
 
-# For HomeAutomation Users ONLY
+# For Home Assistant Users ONLY
 
-You will need to include the following in your HA installation.
+HA users will need to include the following in your HA installation.
 
 Configure HA to use MQTT statestream by including the following in your configuration.yaml (choose your own base_topic: name)
 
@@ -200,7 +199,7 @@ mqtt_statestream:
   
   publish_attributes: true
   
-Include the following in your automations.yaml or if you dont use one then in configuration.yaml
+Include the following in your automations.yaml or if you don't use one then in configuration.yaml
 This enables bidirectional control via statestream
 
 
