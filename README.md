@@ -32,7 +32,8 @@ d) Enable automatic discovery and selected inclusion of devices* using the Home 
   #I have not yet tried openHAB homie3 discovery but I suspect it will not work currently.  You will need at least openHAB 2.5 milestone 1 build, maybe later, and for various stability reasons I can't recommend you upgrade to that - and definately not post milestone 1 builds.  Also I suspect I need to better support some topics in the homie3 specification ($nodes $type $properties and maybe more)
 
 
-# Instructions:
+# Instructions: 
+(preliminary)
 
 # Initial setup:
 
