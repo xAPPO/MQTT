@@ -43,19 +43,21 @@ On the first page select from the 'MQTT Broker' dropdown the MQTT client device 
 For the time being ignore all other options and select 'Next' on the first page and 'Done' on the second 
 .. you should see something similar to this in the log.
 
-info MQTT: ================== Startup complete ==================
-info MQTT:     0 Hubitat devices enabled on MQTT
-info MQTT: ==================================================
-info MQTT: Total startup time will be around 0 seconds
-info MQTT: Skipping HA stateStream MQTT discovery
-info MQTT: Skipping homie MQTT discovery
-info MQTT> Connected as Hubitat_Development to MQTT broker tcp://192.168.1.78:1883
-info MQTT client alpha2 initialised
-info MQTT> Resetting MQTT connection
-info MQTT> Log Level set to 2
-info MQTT: Hubitat hub name is : Hubitat/Development
-info MQTT alpha2 Initialized
-info MQTT: MQTT Installed
+Log:
+
+	info MQTT: ================== Startup complete ==================
+	info MQTT:     0 Hubitat devices enabled on MQTT
+	info MQTT: ==================================================
+	info MQTT: Total startup time will be around 0 seconds
+	info MQTT: Skipping HA stateStream MQTT discovery
+	info MQTT: Skipping homie MQTT discovery
+	info MQTT> Connected as Hubitat_Development to MQTT broker tcp://192.168.1.78:1883
+	info MQTT client alpha2 initialised
+	info MQTT> Resetting MQTT connection
+	info MQTT> Log Level set to 2
+	info MQTT: Hubitat hub name is : Hubitat/Development
+	info MQTT alpha2 Initialized
+	info MQTT: MQTT Installed
 	
 Inparticular check that you get the "Connected as Hubitat_xxxx to MQTT broker" success result, otherwise nothing will work.
 
