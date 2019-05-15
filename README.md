@@ -27,7 +27,9 @@ d) Enable automatic discovery and selected inclusion of devices* using the Home 
 5) Better support for decimal maxBrightness values
 6) Support for multiple homie discovered devices.
 7) Support for JSON payloads
-8) More complete support for homie3 specification from Hubitat - enough so openHAB discovery works.
+8) More complete support for homie3 specification from Hubitat - enough so openHAB# discovery is happy.
+
+  #I have not yet tried openHAB homie discovery but I suspect it will not work currently.  You will need at lease openHAB 2.5 milestone 1 build and maybe later and for various stability reasons I can't recommend you upgrade to that - definately not post milestone 1 builds.  Also I suspect I need to include another couple of topics to my homie3 implementation ($nodes $type $properties and maybe more)
 
 
 # Instructions:
@@ -72,6 +74,7 @@ ________________________________________________________________________________
  
  From 'Apps' run the MQTT app again and select the way (topic structure) that you would like to use to publish your devices to MQTT.
  You have two choices - a 'Hubitat basic MQTT' topic structure or a "homie3 protocol"  one.
+ N.B. Before final release I may remove 'Hubitat Basic' as the 'homie3' topic structure is much the same
  
 Hubitat Basic:
  
@@ -85,7 +88,7 @@ homie3:
 	
 	homie/hubitat_hubname/deviceName/capability/set/<value>
 	
-+ several required configuration topics
+plus several required configuration topics
 
 Now enable which HE devices that you wish to publish to MQTT by selecting them in the two dropdowns
 
