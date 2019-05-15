@@ -6,6 +6,7 @@
 
 /* ==============================================KNOWN ISSUES============================================== 
 
+
 TODO's !!
 
 maxLevels with decimal points are not handled completely. This may impact homie discovery and scaling of level devices
@@ -1131,6 +1132,7 @@ def clearDevices()
 	 atomicState.dimDevices=[]
 }
 
+
 def sendPayload(topic,payload)
 {
 	if (payload==null) {
@@ -1144,3 +1146,7 @@ def sendPayload(topic,payload)
 	log ("Send MQTT " + topic + " " + payload, "TRACE")
 	mqtt.publishMsg (topic,payload)
 }
+
+
+
+
