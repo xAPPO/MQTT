@@ -74,15 +74,15 @@ ________________________________________________________________________________
  
 Hubitat Basic:
  
-Hubitat/HubName/deviceName/capability/<value>            that reports current state
+	Hubitat/HubName/deviceName/capability/<value>            that reports current state
 	
-Hubitat/HubName/deviceName/capability/set/<value>       that allows you to send commands to make a state change
+	Hubitat/HubName/deviceName/capability/set/<value>       that allows you to send commands to make a state change
 
 homie3:
 
-homie/hubitat_hubname/deviceName/capability/<value>
+	homie/hubitat_hubname/deviceName/capability/<value>
 	
-homie/hubitat_hubname/deviceName/capability/set/<value>
+	homie/hubitat_hubname/deviceName/capability/set/<value>
 	
 + several required configuration topics
 
@@ -201,41 +201,42 @@ mqtt_statestream:
 Include the following in your automations.yaml or if you dont use one then in configuration.yaml
 This enables bidirectional control via statestream
 
-- alias: Control switches via MQTT
-  trigger:
-    platform: mqtt
-    topic: +/switch/+/state/cmd
-  action:
-    - service_template: >
-        homeassistant.turn_{{trigger.payload}}
-      data_template:
-        entity_id: >-
-          {{ trigger.topic.split('/')[-4] }}.{{ trigger.topic.split('/')[-3] }}
-          
 
-- alias: Control lights state via MQTT
-  trigger:
-    platform: mqtt
-    topic: +/light/+/state/cmd
-  action:
-    - service_template: >
-        homeassistant.turn_{{trigger.payload}}
-      data_template:
-        entity_id: >-
-          {{ trigger.topic.split('/')[-4] }}.{{ trigger.topic.split('/')[-3] }}
+	- alias: Control switches via MQTT
+	  trigger:
+		platform: mqtt
+		topic: +/switch/+/state/cmd
+	  action:
+		- service_template: >
+			homeassistant.turn_{{trigger.payload}}
+		  data_template:
+			entity_id: >-
+			  {{ trigger.topic.split('/')[-4] }}.{{ trigger.topic.split('/')[-3] }}
+			  
+
+	- alias: Control lights state via MQTT
+	  trigger:
+		platform: mqtt
+		topic: +/light/+/state/cmd
+	  action:
+		- service_template: >
+			homeassistant.turn_{{trigger.payload}}
+		  data_template:
+			entity_id: >-
+			  {{ trigger.topic.split('/')[-4] }}.{{ trigger.topic.split('/')[-3] }}
 
 
-- alias: Control lights brightness via MQTT
-  trigger:
-    platform: mqtt
-    topic: +/light/+/brightness/cmd
-  action:
-    - service_template: >
-        homeassistant.turn_on
-      data_template:
-        brightness: '{{trigger.payload}}'
-        entity_id: >-
-          {{ trigger.topic.split('/')[-4] }}.{{ trigger.topic.split('/')[-3] }}
+	- alias: Control lights brightness via MQTT
+	  trigger:
+		platform: mqtt
+		topic: +/light/+/brightness/cmd
+	  action:
+		- service_template: >
+			homeassistant.turn_on
+		  data_template:
+			brightness: '{{trigger.payload}}'
+			entity_id: >-
+			  {{ trigger.topic.split('/')[-4] }}.{{ trigger.topic.split('/')[-3] }}
 
 
 
@@ -245,31 +246,31 @@ ________________________________________________________________________________
 
 After sucessful configuration and Startup you should see something like the following in the log at 'INFO' level
 
-info MQTT: ================ Startup complete ================
-info MQTT:     Discovered 70 HA light devices
-info MQTT:     Discovered 47 HA switch devices
-info MQTT:     Discovered 13 homie dim devices
-info MQTT:     Discovered 10 homie onoff devices
-info MQTT:     23 Hubitat devices enabled on MQTT
-info MQTT: ==================================================
+	info MQTT: ================ Startup complete ================
+	info MQTT:     Discovered 70 HA light devices
+	info MQTT:     Discovered 47 HA switch devices
+	info MQTT:     Discovered 13 homie dim devices
+	info MQTT:     Discovered 10 homie onoff devices
+	info MQTT:     23 Hubitat devices enabled on MQTT
+	info MQTT: ==================================================
 
 
 There are two other app configuration options to be aware of.
  
-LogLevel:
+# LogLevel:
 
-    LogLevel can be set to limit the logging entries the app posts. It is recommended to set it at level 'INFO'
-    but it can be minimised to "WARN".	Any log messages that show in red as 'ERROR' need investigation (and reporting)
+LogLevel can be set to limit the logging entries the app posts. It is recommended to set it at level 'INFO'
+but it can be minimised to "WARN".	Any log messages that show in red as 'ERROR' need investigation (and reporting)
  
-Purge Discovered Devices
+# Purge Discovered Devices
 
-    WARNING: Setting this will delete all MQTT 'discovered devices' when you click 'Done'
+WARNING: Setting this will delete all MQTT 'discovered devices' when you click 'Done'
 
-    Sounds ominous eh, it's really not so drastic.  Switching this ON will clear all the HE devices that were added through 'discovery'. 
-	They can be recreated by re-running the app. However the unique internal device ID for the device will then change and so the newly created devices will be just that 'new'.
-	This really only has an impact on HE internal references to the original device e.g. Dashboard devices and RuleMachine rules. You will have to recreate these.
-	The main use is to clear out all your discovered devices but once running happily you should leave this set to OFF. 
-	You can always disable devices on the second page of the app config and individually delete previously created devices manually.
+Sounds ominous eh, it's really not so drastic.  Switching this ON will clear all the HE devices that were added through 'discovery'. 
+They can be recreated by re-running the app. However the unique internal device ID for the device will then change and so the newly created devices will be just that 'new'.
+This really only has an impact on HE internal references to the original device e.g. Dashboard devices and RuleMachine rules. You will have to recreate these.
+The main use is to clear out all your discovered devices but once running happily you should leave this set to OFF. 
+You can always disable devices on the second page of the app config and individually delete previously created devices manually.
 	
 	
 	
