@@ -998,7 +998,6 @@ def cmdEvent (evt) {  // 'set' command from homie for a Hubitat or manual device
 	}
 }
 
-
 def createChildDevice(name, type, system, friendlyName) {
 	log("CreateDevice called " + name + " " + type + " " + system + " " + friendlyName, "DEBUG")
 	if (name==null) return
