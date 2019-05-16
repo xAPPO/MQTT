@@ -523,7 +523,7 @@ def mqttRX(evt) {
 def normalize(name) {
 	//TODO research how to include NFD
 	//log ("Normalize: " + name + " >>> " + name.trim().toLowerCase().replaceAll(/[^\w-]/,"_").replaceAll(/[-]/,'_'),"TRACE")
-	return name ? name.trim().toLowerCase().replaceAll(/[^\w-]/,"_").replaceAll(/[-]/,'_') : undefined
+	return name ? name.trim().toLowerCase().replaceAll(/[^\w-]/,"-").replaceAll(/[_]/,'-') : undefined
 	//return name ? name.trim().toLowerCase().replaceAll(/[.*+?^${} ()|]/,"_").replaceAll(/[^a-z0-9_]/,""): undefined
 	//return name ? name.trim().toLowerCase().normalize("NFD").replace(/[ -]+/g, "_").replace(/[^a-z0-9_]/g, "") : undefined
 }
