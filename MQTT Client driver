@@ -1,5 +1,5 @@
 metadata {
-	// v0.2
+	// v0.2b
     definition (name: "MQTT Client", namespace: "ukusa", author: "Kevin Hawkins") {
         capability "Initialize"
 		capability "Telnet"  // temporary kludge
@@ -56,7 +56,7 @@ def initialize() {
         log ("initialize error: ${e.message}", "ERROR")
 		//TODO retries
     }
-	log.info "MQTT client alpha2a initialised"
+	log.info "MQTT client alpha2b initialised"
 	log ("Connected as Hubitat_${state.normHubName} to MQTT broker ${settings?.MQTTBroker}", "INFO")
 	state.connectionAttempts = 0
 	state.delay=100  //delay between events - increase if you have a lot of discovered MQTT devices > 100
@@ -74,8 +74,10 @@ def mqttClientStatus(String status){
     log ("mqttStatus- error: ${status}", "ERROR")
 }
 
-def publishMsg(String t, String p) {
-    alphaV1mqttPublish(device, t, p)
+
+
+def publishMsg(String topic, String payload,int qos = 1, boolean retained = false ) {
+    alphaV1mqttPublish(device, topic, payload, qos, retained)
 }
 
 def subscribeTopic (String s) {
