@@ -46,17 +46,18 @@ def installed() {
 }
 
 def initialize() {
-	def hub = location.hubs[0]
+	//def hub = location.hubs[0]
+	if (state.normHubName==null) state.normHubName = "temporary"
     try {
-		alphaV1mqttConnect(device, settings?.MQTTBroker, "Hubitat_${hub.name}", settings?.username,settings?.password)
+		alphaV1mqttConnect(device, settings?.MQTTBroker, "Hubitat_${state.normHubName}", settings?.username,settings?.password)
         //give it a chance to start
         pauseExecution(1000)
     } catch(e) {
         log ("initialize error: ${e.message}", "ERROR")
 		//TODO retries
     }
-	log.info "MQTT client alpha2 initialised"
-	log ("Connected as Hubitat-${hub.name} to MQTT broker ${settings?.MQTTBroker}", "INFO")
+	log.info "MQTT client alpha2a initialised"
+	log ("Connected as Hubitat_${state.normHubName} to MQTT broker ${settings?.MQTTBroker}", "INFO")
 	state.connectionAttempts = 0
 	state.delay=100  //delay between events - increase if you have a lot of discovered MQTT devices > 100
     state.device=""
@@ -170,11 +171,11 @@ def parse(String description) {
 
 		} // not HA
 	
-	else if (topic[0]=="homie" && topic[1]== "hubitat-${state.normHubName}"){ //local - look for incoming 'set' commands that control Hubitat devices here	
+	else if (topic[0]=="homie" && topic[1]== "${state.normHubName}"){ //local - look for incoming 'set' commands that control Hubitat devices here	
 		if (topic[4]=="set") {
 				 def evt12 = createEvent(name: "Command", value: topic[2], data: [state: payload[0], cmd: topic[3]])
 				 pause (state.delay) // pace
-			//log.error "Ive got this"
+			log.error "Ive got this"
 				 return evt12					
 				}
 				else {
