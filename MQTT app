@@ -121,7 +121,7 @@ def uninstalled() {
 
 def initialize()
 {
-	log.info "${app.name} alpha2a Initialized"
+	log.info "${app.name} alpha2b Initialized"
 	//def hub = location.hubs[0]
 	atomicState.normHubName = normalize(settings?.hubName)
 	log ("Hubitat hub name is : " + settings?.hubName,"INFO")
@@ -131,11 +131,16 @@ def initialize()
 	atomicState.started=false
 	if (settings?.homiePublish)
 	{
-		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$state','init')
-		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$homie','3.0.1') 
-		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$implementation','groovy:uk.co.ukusa.mqtt')
-		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$implementation/version','alpha2')
-		//mqtt.publishMsg ("homie/{normalize(hub.name)}/" +'$nodes,'ToDo')  //TODO
+		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$state','init',1,true)
+		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$homie','3.0.1',1,true) 
+		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$implementation','groovy:uk.co.ukusa.mqtt',1,true)
+		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$fw/version','2b',1,true)
+		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$fw/name','alpha',1,true)
+		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$name',settings?.hubName,1,true)
+		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$mac','BB:AA:DD:AA:55:55',1,true)
+		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$localip','1.2.3.4',1,true)
+		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$fw/name','alpha',1,true)
+		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$implementation/version','alpha2b',1,true)
 	}
 	mqtt.setStateVar("logLevel",determineLogLevel(settings?.logging ?: "INFO"))
 	if ((settings?.mqttRemoveDevices == true))
@@ -203,12 +208,14 @@ def initialize()
 	MQTTswitches = (settings?.switches)
 	count=0
 	atomicState.MQTTDevices=0
+	nodes=""
 	if (MQTTswitches != null) {
 		log ("["+(MQTTswitches.size()) +  "] switches enabled for MQTT ", "TRACE")
 		def temp = atomicState.nameMap
 		for (String item : MQTTswitches) {
    			log ("    MQTT Switch Device " + item, "TRACE")
 			normName= normalize(item)
+			nodes=nodes+normName +','
 			// Build a lookup table for normName to full name
 			temp[normName] = item
 			switched(null, item, MQTTswitches.currentSwitch[0]) // sends an initial status message to MQTT
@@ -224,6 +231,7 @@ def initialize()
 		for (String item : MQTTdimmers) {
    			log ("    MQTT Dimmer Device " + item, "TRACE")
 			normName= normalize(item)
+			nodes=nodes+normName +','
 			temp[normName] = item  //TODO check we dont have duplicate names for two devices ??
 			switchedDim(null, item, MQTTdimmers.currentSwitch[0])
 			dimmed(null, item, MQTTdimmers.currentLevel[0])
@@ -232,6 +240,9 @@ def initialize()
 		atomicState.nameMap = temp
 	}
 	else log ("[0] dimmers enabled for MQTT","TRACE")
+	if (nodes.length()>0)    nodes=nodes.substring(0, nodes.length() - 1)
+	mqtt.publishMsg ("homie/${atomicState.normHubName}/"+'$nodes',nodes,1,true)
+	
 	
 	if(settings?.homieDiscovery) {
 		log ("homie discovery enabled", "INFO")
@@ -443,13 +454,14 @@ def switchedDim(evt, name=null, state=null)
 				
 		
 			//================  Limited homie spec implemenation ================
-			mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/$properties',"onoff")   // limited homie implementation
-			mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/$name',name)   
-			mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/$type',"socket")   
-			mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/onoff/$settable',"true")   
-			mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/onoff/name',name)   
-			mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/onoff/$datatype',"boolean")  
-			mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/onoff',nState) 
+			mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/$properties',"onoff",1,true)   // limited homie implementation
+			mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/$name',name,1,true)   
+			mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/$type',"socket",1,true)  
+			mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/onoff/$settable',"true",1,true)   
+			mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/onoff/name',name,1,true)  
+			mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/onoff/$datatype',"boolean",1,true)
+			mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/onoff',nState)
+			
 			//===================================================================
 		}
 }
@@ -474,12 +486,12 @@ def switched(evt, name=null, state=null)
 				
 		
 			//================  Limited homie spec implemenation ================
-			mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/$properties',"onoff")   // limited homie implementation
-			mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/$name',name)   
-			mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/$type',"socket")   
-			mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/onoff/$settable',"true")   
-			mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/onoff/name',name)   
-			mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/onoff/$datatype',"boolean")  
+			mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/$properties',"onoff",1,true)  // limited homie implementation
+			mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/$name',name,1,true)   
+			mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/$type',"socket",1,true)  
+			mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/onoff/$settable',"true",1,true) 
+			mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/onoff/name',name,1,true) 
+			mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/onoff/$datatype',"boolean",1,true)
 			mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/onoff',nState) 
 			//===================================================================
 	}
@@ -501,14 +513,14 @@ def dimmed(evt, name=null, state=null)
 	if ((settings?.homiePublish)== true) {
     	normName = normalize(name) 
 		//================  Limited homie spec implemenation ================
-		mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/dim',"${state}")
-		mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/$properties',"dim")   // limited homie implementation
-		mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/$name',"${name}")   
-		mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/$type',"light")   
-		mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/dim/$settable',"true")   
-		mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/dim/name',"${name}")   
-		mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/dim/$datatype',"integer") 
-		mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/dim/$format',"0:100")
+		mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/dim',"${state}",1,true)
+		mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/$properties',"dim",1,true)  // limited homie implementation
+		mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/$name',"${name}",1,true)  
+		mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/$type',"light",1,true)   
+		mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/dim/$settable',"true",1,true)  
+		mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/dim/name',"${name}",1,true) 
+		mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/dim/$datatype',"integer",1,true)
+		mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/dim/$format',"0:100",1,true)
 		//===================================================================
 	}
 }
@@ -632,7 +644,7 @@ def devSummary()
 	}
 	log ("================== Startup complete ==================", "INFO")
 	atomicState.started=true
-	if (settings?.homiePublish) mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$state','ready') 
+	if (settings?.homiePublish) mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$state','ready',1,true) 
 }
 
 def LookupManual(evt) {
