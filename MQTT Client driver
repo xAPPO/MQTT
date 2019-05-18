@@ -1,8 +1,8 @@
 metadata {
-	// v0.2b
-    definition (name: "MQTT Client", namespace: "ukusa", author: "Kevin Hawkins") {
+	// v0.3
+    definition (name: "MQTT Client", namespace: "ukusa", author: "Kevin Hawkins",importUrl: "https://raw.githubusercontent.com/xAPPO/MQTT/development/MQTT%20Client%20driver") {
         capability "Initialize"
-		capability "Telnet"  // temporary kludge
+		//capability "Telnet"  // temporary kludge
 
         command "publishMsg", ["String","String"]
 		command "subscribeTopic",["String"]
@@ -56,7 +56,7 @@ def initialize() {
         log ("initialize error: ${e.message}", "ERROR")
 		//TODO retries
     }
-	log.info "MQTT client alpha2b initialised"
+	log.info "MQTT client pre alpha3 initialised"
 	log ("Connected as Hubitat_${state.normHubName} to MQTT broker ${settings?.MQTTBroker}", "INFO")
 	state.connectionAttempts = 0
 	state.delay=100  //delay between events - increase if you have a lot of discovered MQTT devices > 100
