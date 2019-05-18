@@ -21,7 +21,7 @@ definition(
 	name: "MQTT",
 	namespace: "ukusa",
 	author: "Kevin Hawkins",
-	importUrl: "https://raw.githubusercontent.com/xAPPO/MQTT/master/MQTT%20app",
+	importUrl: "https://raw.githubusercontent.com/xAPPO/MQTT/development/MQTT%20app",
 	description: "Links MQTT with HE devices",
 	category: "My Apps",
 	iconUrl: "https://s3.amazonaws.com/smartapp-icons/Convenience/App-BigButtonsAndSwitches.png",
@@ -123,7 +123,7 @@ def uninstalled() {
 
 def initialize()
 {
-	log.info "${app.name} alpha2b Initialized"
+	log.info "${app.name} pre alpha3 Initialized"
 	//def hub = location.hubs[0]
 	atomicState.normHubName = normalize(settings?.hubName)
 	log ("Hubitat hub name is : " + settings?.hubName,"INFO")
@@ -147,7 +147,7 @@ def initialize()
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$mac','BB:AA:DD:AA:55:55',1,true)
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$localip','1.2.3.4',1,true)
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$fw/name','alpha',1,true)
-		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$implementation/version','alpha2b',1,true)
+		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$implementation/version','pre_alpha3',1,true)
 	}
 	mqtt.setStateVar("logLevel",determineLogLevel(settings?.logging ?: "INFO"))
 	if ((settings?.mqttRemoveDevices == true))
