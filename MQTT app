@@ -46,7 +46,8 @@ preferences {
 			section ("Publish these Hubitat devices to MQTT") {
 				input "switches", "capability.switch", multiple: true, required: false, title: "HE Switch Devices > MQTT", submitOnChange: true 
 				//input "test", "capability.switch  && capability.dim", multiple: true, required: false, title: "Test", submitOnChange: true 
-				input "dimmers", "capability.switchLevel", multiple: true, required: false, title: "HE Dimmer devices > MQTT", submitOnChange: true 
+				input "dimmers", "capability.switchLevel", multiple: true, required: false, title: "HE Dimmer devices > MQTT", submitOnChange: true
+				input "sensors", "capability.sensor", multiple: true, required: false, title: "HE Sensor devices > HA Discovery", submitOnChange: true
 				}
 				
 			section ("MQTT Publish Formats"){
@@ -542,9 +543,13 @@ def switched(evt, name=null, state=null)
 		pDev = '' //  ',"device":{"identifiers":"homey-5881e6d7fbfe008b0d23f0e1_a15f6f55-9de2-4af5-9f96-a1e4e375bbc0","name":"Black Spot"}'
 		pValTemp = ',"value_template":"{{ value }}"'
 		
-		payload='{'+pName+pUID+pState+pCmd+pUOM+pON+pOFF+pIcon+pDev+pValTemp+'}'  // TODO more to add  // TODO use a JSON constructor
-		if (settings?.HARemember=="Remember") mqtt.publishMsg ("${settings?.HADiscoveryTopic}/switch/${normName}/config", payload,1,true)
-		else mqtt.publishMsg ("${settings?.HADiscoveryTopic}/switch/${normName}/config", payload)
+				
+		if (!atomicState.started)
+		{
+			payload='{'+pName+pUID+pState+pCmd+pUOM+pON+pOFF+pIcon+pDev+pValTemp+'}'  // TODO more to add  // TODO use a JSON constructor
+			if (settings?.HARemember=="Remember") mqtt.publishMsg ("${settings?.HADiscoveryTopic}/switch/${normName}/config", payload,1,true)
+			else mqtt.publishMsg ("${settings?.HADiscoveryTopic}/switch/${normName}/config", payload)
+		}
 	}
 		
 }
@@ -602,9 +607,12 @@ def dimmed(evt, name=null, state=null)
 		pBriScale = ',"brightness_scale":100'
 		
 		
-		payload='{'+pName+pUID+pState+pCmd+pUOM+pON+pOFF+pIcon+pDev+pValTemp+pOnType+pBriState+pBriCmd+pBriTemp+pBriScale+'}'  // TODO more to add  // TODO use a JSON constructor
+		if (!atomicState.started)
+		{
+			payload='{'+pName+pUID+pState+pCmd+pUOM+pON+pOFF+pIcon+pDev+pValTemp+pOnType+pBriState+pBriCmd+pBriTemp+pBriScale+'}'  // TODO more to add  // TODO use a JSON constructor
 		if (settings?.HARemember=="Remember") mqtt.publishMsg ("${settings?.HADiscoveryTopic}//${normName}/config", payload,1,true)
 		else mqtt.publishMsg ("${settings?.HADiscoveryTopic}/light/${normName}/config", payload)
+		}
 	}
 }
 
