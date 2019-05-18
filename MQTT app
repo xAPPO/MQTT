@@ -54,6 +54,7 @@ preferences {
 				input "homiePublish", "bool", title: "homie 3 protocol", required: true, defaultValue: false, submitOnChange: true
 				input "HADiscovery", "bool", title: "    HA MQTT discovery protocol (requires homie3 publish enabled)", required: true, defaultValue: false, submitOnChange: true 	
 				input name: "HADiscoveryTopic",  type: "text", title: "HA Discovery Topic", description: "  as configured in HA", required: false, displayDuringSetup: true, submitOnChange: false
+				input "HARemember", "enum", title: " HA MQTT discovered devices", required: false, defaultValue: "Forget",options: ["Forget", "Remember"], submitOnChange: true
 				}
 			
 			}
@@ -181,20 +182,31 @@ def initialize()
 	subscribe(adhoc,"changeState",stateChange)
 	subscribe(adhoc,"changeLevel",levelChange)
 	
+	atomicState.MQTTOnOffDevices=0
+	atomicState.MQTTDimDevices=0
+	atomicState.adhocDevices=0
+	
 	if (settings?.homieDevice) mqtt.setStateVar("homieDevice",settings?.homieDevice)
 	atomicState.delay = 0
-	if (adhoc!= null)
+	count=0
+	if (settings?.adhoc!= null)
 	{
-		log ("["+(adhoc.size()) +"] manual/adhoc devices enabled for MQTT","INFO")
-		atomicState.delay += 10
+		log ("["+(settings?.adhoc.size()) +"] manual/adhoc devices enabled for MQTT","INFO")
+		atomicState.delay += 10  // TODO check we need this much delay
 		index=0
 		for (String item : settings?.adhoc) {
 			atomicState.delay += 1
 			pauseExecution(500)  // TODO paces responses - NB sendTopics runs after 10 seconds currently i.e 20 devices - need to tweak
-			adhoc[index++].getStateTopics()
+			try {
+				adhoc[index++].getStateTopics()
+				count++
+			}
+			catch (e) {
+				log ("Device ${item} does not have MQTT virtual capabilities","WARN")
+			}
 		}
 	}
-	
+	atomicState.adhocDevices=count // settings?.adhoc.size()
 	log ("reinitializing", "TRACE")
 	atomicState.createDevices=false
 	if (settings?.HEBasic){
@@ -214,7 +226,6 @@ def initialize()
 	atomicState.topicMap=[:]
 	MQTTswitches = (settings?.switches)
 	count=0
-	atomicState.MQTTDevices=0
 	nodes=""
 	if (MQTTswitches != null) {
 		log ("["+(MQTTswitches.size()) +  "] switches enabled for MQTT ", "TRACE")
@@ -227,7 +238,7 @@ def initialize()
 			temp[normName] = item
 			switched(null, item, MQTTswitches.currentSwitch[0]) // sends an initial status message to MQTT
 			// Maybe here's a good place to setup the HA Discovery info
-			atomicState.MQTTDevices++
+			atomicState.MQTTOnOffDevices++
 		}
 		atomicState.nameMap = temp
 	}
@@ -244,7 +255,7 @@ def initialize()
 			switchedDim(null, item, MQTTdimmers.currentSwitch[0])
 			// Maybe here's a good place to setup the HA Discovery info
 			dimmed(null, item, MQTTdimmers.currentLevel[0])
-			atomicState.MQTTDevices++
+			atomicState.MQTTDimDevices++
 		}
 		atomicState.nameMap = temp
 	}
@@ -519,7 +530,7 @@ def switched(evt, name=null, state=null)
 
 		//payload='{"name":"'+name+'","unique_id":"0133471c-87f0-4abd-a310-4be32fbf8eb0_measure_battery","state_topic":"homie/development/hub-42/onoff","unit_of_measurement":"%","device":{"identifiers":"louey_0133471c-87f0-4abd-a310-4be32fbf8eb0","name":"Gledholt Hall - Wind"},"value_template":"{{ value }}"}'
 
-		pName = '{"name":"'+name+'"'
+		pName = '"name":"'+name+'"'
 		pUID = ',"unique_id":"Hubitat-MQTT:_' + normName + '"'
 		pDevClass = ''   // ',"device_class": "motion"'  for sensors
 		pState = ',"state_topic":"'+sTopic +'"'
@@ -529,12 +540,11 @@ def switched(evt, name=null, state=null)
 		pOFF = ',"payload_off":"false"'
 		pIcon = ',"icon":"mdi:power"'
 		pDev = '' //  ',"device":{"identifiers":"homey-5881e6d7fbfe008b0d23f0e1_a15f6f55-9de2-4af5-9f96-a1e4e375bbc0","name":"Black Spot"}'
-		pValtemp = ',"value_template":"{{ value }}"}'
+		pValTemp = ',"value_template":"{{ value }}"'
 		
-		payload=pName+pUID+pState+pCmd+pUOM+pON+pOFF+pIcon+pDev+pValtemp  // TODO more to add  // TODO use a JSON constructor
-		
-		
-		mqtt.publishMsg ("${settings?.HADiscoveryTopic}/switch/${normName}/config", payload)
+		payload='{'+pName+pUID+pState+pCmd+pUOM+pON+pOFF+pIcon+pDev+pValTemp+'}'  // TODO more to add  // TODO use a JSON constructor
+		if (settings?.HARemember=="Remember") mqtt.publishMsg ("${settings?.HADiscoveryTopic}/switch/${normName}/config", payload,1,true)
+		else mqtt.publishMsg ("${settings?.HADiscoveryTopic}/switch/${normName}/config", payload)
 	}
 		
 }
@@ -555,7 +565,9 @@ def dimmed(evt, name=null, state=null)
 	if (settings?.homiePublish) {
     	normName = normalize(name) 
 		//================  Limited homie spec implemenation ================
-		mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/dim',"${state}",1,true)
+		sTopic="homie/${atomicState.normHubName}/${normName}"+'/onoff'
+		sDimTopic="homie/${atomicState.normHubName}/${normName}"+'/dim'
+		mqtt.publishMsg (sDimTopic,"${state}",1,true)
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/$properties',"onoff,dim",1,true)  // limited homie implementation
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/$name',"${name}",1,true)  
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/$type',"light",1,true)   
@@ -566,7 +578,33 @@ def dimmed(evt, name=null, state=null)
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/dim/$format',"0:100",1,true)
 		//===================================================================
 	}
-	if (settings?.HADiscovery){
+	if (settings?.HADiscovery){  //TODO combine
+		
+		//{"name":"Davenport","unique_id":"3a79806f-00c5-40aa-99a6-473dcfdc8675_light","payload_on":"true","payload_off":"false","state_topic":"homie/louey/davenport/onoff","state_value_template":"{{ value }}","command_topic":"homie/louey/davenport/onoff/set",
+		// "on_command_type":"first","brightness_state_topic":"homie/louey/davenport/dim","brightness_command_topic":"homie/louey/davenport/dim/set","brightness_value_template":"{{ value }}","brightness_scale":100,"device":{"identifiers":"louey_3a79806f-00c5-40aa-99a6-473dcfdc8675","name":"Davenport"}}
+		
+		pName = '"name":"'+name+'"'
+		pUID = ',"unique_id":"Hubitat-MQTT:_' + normName + '"'
+		pDevClass = ''   // ',"device_class": "motion"'  for sensors
+		pState = ',"state_topic":"'+ sTopic + '"'
+		pCmd = ',"command_topic":"'+ sTopic + '/set"'
+		pUOM = ''
+		pON = ',"payload_on":"true"'
+		pOFF = ',"payload_off":"false"'
+		pIcon = ',"icon":"mdi:power"'
+		pDev = '' //  ',"device":{"identifiers":"homey-5881e6d7fbfe008b0d23f0e1_a15f6f55-9de2-4af5-9f96-a1e4e375bbc0","name":"Black Spot"}'
+		pValTemp = ',"value_template":"{{ value }}"'
+		
+		pOnType = ',"on_command_type":"first"'
+		pBriState = ',"brightness_state_topic":"' + sDimTopic + '"'
+		pBriCmd = ',"brightness_command_topic":"' + sDimTopic + '/set"'
+		pBriTemp= ',"brightness_value_template":"{{ value }}"'
+		pBriScale = ',"brightness_scale":100'
+		
+		
+		payload='{'+pName+pUID+pState+pCmd+pUOM+pON+pOFF+pIcon+pDev+pValTemp+pOnType+pBriState+pBriCmd+pBriTemp+pBriScale+'}'  // TODO more to add  // TODO use a JSON constructor
+		if (settings?.HARemember=="Remember") mqtt.publishMsg ("${settings?.HADiscoveryTopic}//${normName}/config", payload,1,true)
+		else mqtt.publishMsg ("${settings?.HADiscoveryTopic}/light/${normName}/config", payload)
 	}
 }
 
@@ -674,23 +712,6 @@ def homieName(evt) {
 	child.label= data.label
 	log ("Added label ${data.label} to ${evt.value}" ,"TRACE")
 	} 
-
-def devSummary()
-{
-	log ("==================================================", "INFO")
-	log ("    ${atomicState.MQTTDevices} Hubitat devices enabled on MQTT", "INFO")
-	if (settings?.homieDiscovery){
-		log ("    Discovered ${atomicState.onoffDevices.size()} homie onoff devices", "INFO")
-        log ("    Discovered ${atomicState.dimDevices.size()} homie dim devices", "INFO")
-	}
-	if (settings?.HAStatestream) {
-		log ("    Discovered ${atomicState.HASwitchDevices.size()} HA switch devices", "INFO")
-		log ("    Discovered ${atomicState.HALightDevices.size()} HA light devices", "INFO")
-	}
-	log ("================== Startup complete ==================", "INFO")
-	atomicState.started=true
-	if (settings?.homiePublish) mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$state','ready',1,true) 
-}
 
 def LookupManual(evt) {
 	def dimDevice=false
@@ -1178,6 +1199,25 @@ def createChildDevice(name, type, system, friendlyName) {
 			//log ("addChild/topics failed for " +name + " " +(ex.toString()), "TRACE")
 		}	
 
+}
+
+def devSummary()
+{
+	log ("==================================================", "INFO")
+	log ("    ${atomicState.MQTTOnOffDevices} Hubitat switch devices enabled on MQTT", "INFO")
+	log ("    ${atomicState.MQTTDimDevices} Hubitat dimmer devices enabled on MQTT", "INFO")
+	log ("    ${atomicState.adhocDevices} Hubitat virtual devices synched to MQTT", "INFO")
+	if (settings?.homieDiscovery){
+		log ("    Discovered ${atomicState.onoffDevices.size()} homie onoff devices", "INFO")
+        log ("    Discovered ${atomicState.dimDevices.size()} homie dim devices", "INFO")
+	}
+	if (settings?.HAStatestream) {
+		log ("    Discovered ${atomicState.HASwitchDevices.size()} HA switch devices", "INFO")
+		log ("    Discovered ${atomicState.HALightDevices.size()} HA light devices", "INFO")
+	}
+	log ("================== Startup complete ==================", "INFO")
+	atomicState.started=true
+	if (settings?.homiePublish) mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$state','ready',1,true) 
 }
 
 def clearDevices()
