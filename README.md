@@ -1,10 +1,16 @@
 # MQTT
+
 MQTT client for Hubitat
 
+################     WORK IN PROGRESS  - AT ANY GIVEN TIME THIS MAY BE BROKEN - ################
 
-Release notes for alpha2  
-14th May 2019
-(first broader release)
+NB alpha2a is currently here - the development version will be version alpha3 and will be uploaded shortly
+
+NO SUPPORT ON THIS VERSION and do NOT discuss on the Hubitat community
+
+Release notes for pre alpha3  
+18th May 2019
+
 
 # Features
 
@@ -16,18 +22,20 @@ c) Enable automatic discovery and selected inclusion of devices* using the homie
 
 d) Enable automatic discovery and selected inclusion of devices* using the Home Assistant statestream protocol (offered by HA) - a small  automation script is provided for HA that enables the statestream protocol for control > HA too.
 
+e) Enable automatic discovery and selected inclusion of Hubitat devices* into Home Assistant using the HA MQTT Discovery protocol ( work in progress)
+
 *N.B.This version currently supports 'switch' (onoff) and 'switchLevel' (dim) capabilities only - but will be expanded to include others
 
 # Future Features:
 
 1) Support of many more device capabilities beyond 'onoff' and 'dim'
 2) Add sensor support for reporting of sensor values - (let me know which ones you use)
-3) Support Home Assistant MQTT discovery protocol bidirectionally - HE devices auto discovered by HA and devices advertising using this protocol discoverable by HE
+3) Support Home Assistant MQTT discovery protocol bidirectionally - HE devices auto discovered by HA and devices advertising using this protocol discoverable by HE. (IN PROGRESS  HA Discovery partially implemented )
 4) Know Issue: currently,  at startup, HE devices do not publish their current state to MQTT. They do on change. [FIXED]
 5) Better support for decimal maxBrightness values
 6) Support for multiple homie discovered devices.
 7) Support for JSON payloads
-8) More complete support for homie3 specification from Hubitat - enough so openHAB# discovery is happy.
+8) More complete support for homie3 specification from Hubitat - enough so openHAB# discovery is happy. [DONE]
 
   #I have not yet tried openHAB homie3 discovery but I suspect it will not work currently.  You will need at least openHAB 2.5 milestone 1 build, maybe later, and for various stability reasons I can't recommend you upgrade to that - and definately not post milestone 1 builds.  Also I suspect I need to better support some topics in the homie3 specification ($nodes $type $properties and maybe more)
 
@@ -206,6 +214,28 @@ Add the included "automations.yaml" to your automations.yaml file in HA , or if 
 This enables bidirectional control via statestream
 
 __________________________________________________________________________________________________________________________
+
+__________________________________________________________________________________________________________________________
+# e) Enable automatic discovery by Home Assitant of Hubitat devices (switch and dim only currently)
+
+To enable the advertising of Hubitat devices for discovery by HA.
+
+First ensure HA has 'discovery' enabled i and note the topic that it is using (within the mqtt section of HA's configuration.yaml file).
+(You will need to restart HA if you edit configuration.yaml)
+
+	discovery: true
+	discovery_prefix: homeassistant
+  
+Under the MQTT Publish formats on the MQTT app first page
+Enable HA MQTT discovery protocol
+Enable homie 3 protocol on the MQTT app first page. (You must enable this as HA reads MQTT paylaods from the homie topic)
+In the HA Discovery Topic field enter the discovery_prefix value that HA is using (e.g. homeassistant if as above).
+Click through 'Next' Done' 
+
+Devices (onoff and dim only currently) that are enabled for MQTT within Hubitat will automatically just appear as 'switches' and 'lights' in your Home Assistant front end. You may to have press ctrl F5 to refresh the HA interface , and they may initially appear as 'unused entities' which you can check by clicking the 'hamburger' icon in the top right hand of recent HA builds.  These devices are bidirectionally realtime synched with Hubitat.  When HA starts up it checks MQTT for discovered devices. If you want them to persist over HA restarts then ensure you check the 'retain' checkbox under the 'HA Dsicovery Topic" name in the MQTT app. If it is unchecked then HA will purge these devices when restarted , although it might warn you with yellow boxes the first time it notices they have gone.
+
+__________________________________________________________________________________________________________________________
+
 
 # Additional Notes:
 
