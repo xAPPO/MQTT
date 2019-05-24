@@ -1,5 +1,5 @@
 metadata {
-	// v0.3a
+	// v0.3
     definition (name: "MQTT Client", namespace: "ukusa", author: "Kevin Hawkins",importUrl: "https://raw.githubusercontent.com/xAPPO/MQTT/development/MQTT%20Client%20driver") {
         capability "Initialize"
 		//capability "Telnet"  // temporary kludge
@@ -56,7 +56,7 @@ def initialize() {
         log ("initialize error: ${e.message}", "ERROR")
 		//TODO retries
     }
-	log.info "MQTT client pre alpha3a initialised"
+	log.info "MQTT client pre alpha3 initialised"
 	log ("Connected as Hubitat_${state.normHubName} to MQTT broker ${settings?.MQTTBroker}", "INFO")
 	state.connectionAttempts = 0
 	state.delay=100  //delay between events - increase if you have a lot of discovered MQTT devices > 100
@@ -110,22 +110,50 @@ def parse(String description) {
 				return evt10
 				}
 				else if (topic[3]=='friendly_name'){ 
-				//log ("Device ${topic[2]} is a HA sensor and is called " +payload[0], "INFO")
-				def evt11= createEvent([name: "HASensorDev", value: topic[2], data: [label: payload[0]]])
+				//log ("Device ${topic[2]} is a HA sensor and is called " +payload[0], "TRACE")
+				def evt11= createEvent([name: "HASensorDev", value: topic[2], data: [label: deQuote(payload[0])]])
 				pause (state.delay) // pace
 				return evt11
 				}
 				else if (topic[3]=='unit_of_measurement'){ 
-				def evt11= createEvent([name: "SensorUnit", value: topic[2], data: [label: payload[0]]])
+				def evt11= createEvent([name: "SensorUnit", value: topic[2], data: [payload: payload[0]]])
 				pause (state.delay) // pace
 				return evt11
+				}
+			}
+			
+			if (topic[1]=='binary_sensor') { // This is a HA discovered sensor component // Not used in alpha2
+
+				if (topic[3]=='state'){
+				//log ("RX::Binary Sensor state::  " + topic[2] + " is " + payload[0], "DEBUG")
+				def evt10 = createEvent(name: "BinarySensor", value: topic[2], data: [status: payload[0]])  //, key2: payload])
+				pause (state.delay) // pace
+				return evt10
+				}
+				else if (topic[3]=='friendly_name'){ 
+				log ("Device ${topic[2]} is a HA binary sensor and is called " +payload[0], "INFO")
+				def evt19 = createEvent(name: "LabelDevice", value: "MQTT:HA_"+topic[2], data: [label: deQuote(payload[0])])
+				 //return evt19
+				// just renames the device as creation now from 'device_class  // need to ensure device_class arrives first so driver is correct when created
+				//def evt19= createEvent([name: "HABinarySensorDev", value: topic[2], data: [label: payload[0]]])
+				pause (state.delay) // pace  // maybe extend this if needed to ensure above
+				return evt19
+				}
+				else if (topic[3]=='device_class'){ 
+				log ("Device ${topic[2]} is a HA binary sensor and is of type " +payload[0], "TRACE")
+				// create device from here as need device_class to select driver
+				// def evt18= createEvent([name: "HABinarySensorDev", value: topic[2], data: [label: payload[0]]])
+				//evt18= createEvent([name: "SensorDevClass", value: topic[2], data: [type: payload[0]]])  ?? Unused now ?? TODO
+				def evt18= createEvent([name: "HABinarySensorDev", value: topic[2], data: [type: deQuote(payload[0])]])  // TODO handle in app
+				pause (state.delay) // pace
+				return evt18
 				}
 			}
 
 		else if (topic[1]=='switch') { // This is a HA discovered switch component
 			if (topic[3]=='friendly_name') {
 				log ("Device ${topic[2]} is a HA switch and is called " +payload[0], "TRACE")
-				def evt3= createEvent([name: "HASwitchDev", value: topic[2], data: [label: payload[0]]])
+				def evt3= createEvent([name: "HASwitchDev", value: topic[2], data: [label: deQuote(payload[0])]])
 				pause (state.delay) // pace
 				return evt3
 			}
@@ -134,7 +162,24 @@ def parse(String description) {
 				pause (state.delay) // pace
 				return evt4
 			}
-			log ("Unhandled HA MQTT parse  ${topic[0]}  ${topic[1]}  ${topic[2]}  ${topic[3]} - ${payload[0]}", "WARN")
+			log ("Unhandled HA (a) MQTT parse  ${topic[0]}  ${topic[1]}  ${topic[2]}  ${topic[3]} - ${payload[0]}", "WARN")
+			return
+		}
+			
+		else if (topic[1]=='group') { // This is a HA discovered group component
+			if (topic[3]=='friendly_name') {
+				log ("Device ${topic[2]} is a HA group and is called " +payload[0], "ERROR")
+				def evt3= createEvent([name: "HAGroupDev", value: topic[2], data: [label: deQuote(payload[0])]])
+				pause (state.delay) // pace
+				return evt3
+			}
+			if (topic[3]=='state'){
+				def evt4 = createEvent(name: "Group", value: topic[2], data: [status: payload[0]])  //, key2: payload])
+				pause (state.delay) // pace
+				log ("Device ${topic[2]} is a HA group and is turned " +payload[0], "ERROR")
+				return evt4
+			}
+			log ("Unhandled HA (b) MQTT parse  ${topic[0]}  ${topic[1]}  ${topic[2]}  ${topic[3]} - ${payload[0]}", "WARN")
 			return
 		}
 
@@ -149,7 +194,7 @@ def parse(String description) {
 						friendlyName=friendlyName.substring(0, friendlyName.length() - 1)
 				}
 				log ("Device ${topic[2]} is a HA light and is called " +payload[0] + " " + friendlyName,"TRACE")
-				def evt5= createEvent([name: "HALightDev", value: topic[2], data: [label: friendlyName]])
+				def evt5= createEvent([name: "HALightDev", value: topic[2], data: [label: deQuote(friendlyName)]])
 				pause (state.delay) // pace
 				return evt5
 			}
@@ -166,10 +211,15 @@ def parse(String description) {
 				pause (state.delay) // pace
 				return evt9
 			}
-			log ("Unhandled HA MQTT parse  ${topic[0]}  ${topic[1]}  ${topic[2]}  ${topic[3]} - ${payload[0]}", "WARN")
+			log ("Unhandled HA (c) MQTT parse  ${topic[0]}  ${topic[1]}  ${topic[2]}  ${topic[3]} - ${payload[0]}", "WARN")
 			return
 		}  // not a HA light
-			log ("Unhandled HA MQTT parse  ${topic[0]}  ${topic[1]}  ${topic[2]}  ${topic[3]} - ${payload[0]}", "WARN")
+			log ("Unhandled (d) HA MQTT parse  ${topic[0]}  ${topic[1]}  ${topic[2]}  ${topic[3]} - ${payload[0]}", "WARN")
+			
+			
+			
+			
+			
 
 		} // not HA
 	
@@ -207,7 +257,7 @@ def parse(String description) {
 				}	
 
 			 if (topic[3]=='$name') {
-				 def evt0 = createEvent(name: "Label", value: topic[2], data: [label: payload[0]])
+				 def evt0 = createEvent(name: "LabelDevice", value: "MQTT:homie_"+topic[2], data: [label: payload[0]])
 				 pause (state.delay) // pace
 				 return evt0
 			 }
@@ -235,6 +285,11 @@ def parse(String description) {
 		sendEvent (name: "Lookup", value: payload[0], data: [topic: alphaV1parseMqttMessage(description).topic]) 
 
 	}
+}
+
+def deQuote (s) {
+ 	s=s.replaceAll('^\"|\"$', "")
+	return s
 }
 
 def reset()
