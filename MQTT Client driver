@@ -56,7 +56,7 @@ def initialize() {
         log ("initialize error: ${e.message}", "ERROR")
 		//TODO retries
     }
-	log.info "MQTT client pre alpha3 initialised"
+	log.info "MQTT client pre3 alpha3 initialised"
 	log ("Connected as Hubitat_${state.normHubName} to MQTT broker ${settings?.MQTTBroker}", "INFO")
 	state.connectionAttempts = 0
 	state.delay=100  //delay between events - increase if you have a lot of discovered MQTT devices > 100
@@ -77,6 +77,8 @@ def mqttClientStatus(String status){
 
 
 def publishMsg(String topic, String payload,int qos = 1, boolean retained = false ) {
+	if (payload==null) log("Publish payload is null for topic ${topic}","ERROR")
+	if (topic==null) log("Publish topic is null for payload ${payload}","ERROR")
     alphaV1mqttPublish(device, topic, payload, qos, retained)
 }
 
@@ -101,16 +103,27 @@ def parse(String description) {
 	def payload=alphaV1parseMqttMessage(description).payload.split(',')
 	if (topic[0]==state.HAStatestreamTopic)
 		{
-			if (topic[1]=='sensor') { // This is a HA discovered sensor component // Not used in alpha2
+			if (topic[1]=='status') {  // HA LWT
+				if (payload[0]=="online") {
+					log ("Home Assistant [${state.HAStatestreamTopic}] is ONLINE","INFO")
+					def evt23 = createEvent(name: "HASynch", value: state.HAStatestreamTopic)
+					return evt23
+				}
+				else if (payload[0]=="offline") {
+					log ("Home Assistant [${state.HAStatestreamTopic}] is OFFLINE","INFO")
+				}
+				return
+			}
+			if (topic[1]=='sensor') {
 
 				if (topic[3]=='state'){
-				//log ("RX::Sensor state::  " + topic[2] + " is " + payload[0], "DEBUG")
+				//log ("RX::Sensor state::  " + topic[2] + " is " + payload[0], "TRACE")
 				def evt10 = createEvent(name: "Sensor", value: topic[2], data: [status: payload[0]])  //, key2: payload])
 				pause (state.delay) // pace
 				return evt10
 				}
 				else if (topic[3]=='friendly_name'){ 
-				//log ("Device ${topic[2]} is a HA sensor and is called " +payload[0], "TRACE")
+				log ("Device ${topic[2]} is a HA sensor and is called " +payload[0], "TRACE")
 				def evt11= createEvent([name: "HASensorDev", value: topic[2], data: [label: deQuote(payload[0])]])
 				pause (state.delay) // pace
 				return evt11
@@ -122,7 +135,7 @@ def parse(String description) {
 				}
 			}
 			
-			if (topic[1]=='binary_sensor') { // This is a HA discovered sensor component // Not used in alpha2
+			if (topic[1]=='binary_sensor') {
 
 				if (topic[3]=='state'){
 				//log ("RX::Binary Sensor state::  " + topic[2] + " is " + payload[0], "DEBUG")
@@ -131,7 +144,7 @@ def parse(String description) {
 				return evt10
 				}
 				else if (topic[3]=='friendly_name'){ 
-				log ("Device ${topic[2]} is a HA binary sensor and is called " +payload[0], "INFO")
+				log ("Device ${topic[2]} is a HA binary sensor and is called " +payload[0], "TRACE")
 				def evt19 = createEvent(name: "LabelDevice", value: "MQTT:HA_"+topic[2], data: [label: deQuote(payload[0])])
 				 //return evt19
 				// just renames the device as creation now from 'device_class  // need to ensure device_class arrives first so driver is correct when created
@@ -140,7 +153,7 @@ def parse(String description) {
 				return evt19
 				}
 				else if (topic[3]=='device_class'){ 
-				log ("Device ${topic[2]} is a HA binary sensor and is of type " +payload[0], "TRACE")
+				//log ("Device ${topic[2]} is a HA binary sensor and is of type " +payload[0], "TRACE")
 				// create device from here as need device_class to select driver
 				// def evt18= createEvent([name: "HABinarySensorDev", value: topic[2], data: [label: payload[0]]])
 				//evt18= createEvent([name: "SensorDevClass", value: topic[2], data: [type: payload[0]]])  ?? Unused now ?? TODO
@@ -150,7 +163,7 @@ def parse(String description) {
 				}
 			}
 
-		else if (topic[1]=='switch') { // This is a HA discovered switch component
+		else if (topic[1]=='switch') {
 			if (topic[3]=='friendly_name') {
 				log ("Device ${topic[2]} is a HA switch and is called " +payload[0], "TRACE")
 				def evt3= createEvent([name: "HASwitchDev", value: topic[2], data: [label: deQuote(payload[0])]])
@@ -166,9 +179,9 @@ def parse(String description) {
 			return
 		}
 			
-		else if (topic[1]=='group') { // This is a HA discovered group component
+		else if (topic[1]=='group') {  
 			if (topic[3]=='friendly_name') {
-				log ("Device ${topic[2]} is a HA group and is called " +payload[0], "ERROR")
+				log ("Device ${topic[2]} is a HA group and is called " +payload[0], "TRACE")
 				def evt3= createEvent([name: "HAGroupDev", value: topic[2], data: [label: deQuote(payload[0])]])
 				pause (state.delay) // pace
 				return evt3
@@ -176,14 +189,31 @@ def parse(String description) {
 			if (topic[3]=='state'){
 				def evt4 = createEvent(name: "Group", value: topic[2], data: [status: payload[0]])  //, key2: payload])
 				pause (state.delay) // pace
-				log ("Device ${topic[2]} is a HA group and is turned " +payload[0], "ERROR")
+				//log ("Device ${topic[2]} is a HA group and is turned " +payload[0], "TRACE")
+				return evt4
+			}
+			log ("Unhandled HA (b) MQTT parse  ${topic[0]}  ${topic[1]}  ${topic[2]}  ${topic[3]} - ${payload[0]}", "WARN")
+			return
+		}
+			
+		else if (topic[1]=='input_boolean') { 
+			if (topic[3]=='friendly_name') {
+				log ("Device ${topic[2]} is a HA input boolean and is called " +payload[0], "TRACE")
+				def evt3= createEvent([name: "HAInputBooleanDev", value: topic[2], data: [label: deQuote(payload[0])]])
+				pause (state.delay) // pace
+				return evt3
+			}
+			if (topic[3]=='state'){
+				def evt4 = createEvent(name: "InputBoolean", value: topic[2], data: [status: payload[0]])  //, key2: payload])
+				pause (state.delay) // pace
+				//log ("Device ${topic[2]} is a HA input boolean and is " +payload[0], "TRACE")
 				return evt4
 			}
 			log ("Unhandled HA (b) MQTT parse  ${topic[0]}  ${topic[1]}  ${topic[2]}  ${topic[3]} - ${payload[0]}", "WARN")
 			return
 		}
 
-		else if (topic[1]=='light') { // This is a HA discovered light component
+		else if (topic[1]=='light') { 
 
 			if (topic[3]=='friendly_name')
 			{
