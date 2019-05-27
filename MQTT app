@@ -6,7 +6,6 @@
 
 /* ==============================================KNOWN ISSUES============================================== 
 
-Copyright Kevin Hawkins  apps@ukusa.co.uk
 
 TODO's !!
 
@@ -36,6 +35,7 @@ preferences {  // can't use atomicState vars in this section
 				input "mqtt", "device.MQTTClient", required: true, title: "<b>MQTT Broker</b>", submitOnChange: true
 				input name: "hubName",  type: "text", title: "<b>Hub Name</b>", description: "  choose a unique name for this Hubitat Hub", required: true, displayDuringSetup: true, submitOnChange: false
 				input "mqttRemoveDevices", "bool", title: "<b>Purge Discovered Devices</b><br> WARNING: Setting this will delete all your MQTT 'discovered devices' when you click 'Done'. However your selected devices in HA and homie discovery will be re-added automatically when app is run again but you will need to re-add them manually in your Dashboards. Your selected 'published' devices and any manually created devices will not be affected", required: true, defaultValue: false, submitOnChange: true
+				input "WipeDevices", "bool", title: "Forget enabled devices", submitOnChange: false
 				input "logging", "enum", title: "<b>Log Level</b>", required: false, defaultValue: "INFO", options: ["TRACE", "DEBUG", "INFO", "WARN", "ERROR", "DISABLED"]
 			}
 			section ("<B>Import these devices from MQTT<b>",hideable: true, hidden: true){
@@ -85,8 +85,6 @@ def discovery() {  // can use atomicState vars in this section
 		if (Homie_onoff!=null) numEnabled = settings?.Homie_onoff.size()
 		if (Homie_dim!=null) numEnabled += settings?.Homie_dim.size()
 		if (Homie_sensors!=null) numEnabled += settings?.Homie_sensors.size()
-
-		//if (numEnabled>=0) numText = "${numEnabled} of ${numDevs} enabled"
 		if (settings?.homieDiscovery){
 			if (atomicState.started) numText = "${numEnabled} of ${numDevs} enabled"
 			else numText="checking"
@@ -98,11 +96,9 @@ def discovery() {  // can use atomicState vars in this section
 		section (homieEnabled+"<b>homie</b>    [${numText}]</font>", hideable: true, hidden: true){
 		input "homieDiscovery", "bool", title: "<b>homie 3 protocol<b>", required: true, defaultValue: false, submitOnChange: true
 		input name: "homieDevice", type: "text", title: "<b>homie device topic name</b>", description: "... to import devices from", required: false, displayDuringSetup: false
-		//input "Homie_onoff", "enum", multiple: true, title: "<b>Discovered homie switches [" + atomicState.onoffDevices.size()+"]", options: atomicState.onoffDevices
-		input "Homie_onoff", "enum", multiple: true, title: "<b>Discovered ${atomicState.onoffDevices.size()} homie switches</b>", options: atomicState.onoffDevices
-		//input "Homie_dim", "enum", multiple: true, title: "<b>Discovered homie dimmers [" + atomicState.dimDevices.size()+"]", options: atomicState.dimDevices
-		input "Homie_dim", "enum", multiple: true, title: "<b>Discovered ${atomicState.dimDevices.size()} homie dimmers</b>", options: atomicState.dimDevices
-		input "Homie_sensor", "enum", multiple: true, title: "<b>Discovered ${atomicState.sensorDevices.size()} homie sensors with ${0} enabled</b>", options: atomicState.sensorDevices
+		input "Homie_onoff", "enum", multiple: true, title: "<b>Discovered ${atomicState.onoffDevices.size()} homie switches</b>", options: atomicState.onoffDevices.sort()
+		input "Homie_dim", "enum", multiple: true, title: "<b>Discovered ${atomicState.dimDevices.size()} homie dimmers</b>", options: atomicState.dimDevices.sort()
+		input "Homie_sensor", "enum", multiple: true, title: "<b>Discovered ${atomicState.sensorDevices.size()} homie sensors with ${0} enabled</b>", options: atomicState.sensorDevices.sort()
 		}
 		
 	section {}
@@ -134,12 +130,12 @@ def discovery() {  // can use atomicState vars in this section
 			if (settings?.HA_InputBooleans != null) HAib = settings?.HA_InputBooleans.size() else HAib=0
 		input "HAStatestream", "bool", title: "Home Assistant statestream", required: true, defaultValue: false, submitOnChange: true 
 		input name: "HAStatestreamTopic", type: "text", title: "Home Assistant Statestream topic", description: "", required: false, displayDuringSetup: false
-		input "HA_Switches", "enum", multiple: true, title: "Discovered  ${atomicState.HASwitchDevices.size()} Home Assistant switches &nbsp &nbsp &nbsp [^${HAsw}]", options: atomicState.HASwitchDevices
-		input "HA_Lights", "enum", multiple: true, title: "Discovered ${atomicState.HALightDevices.size()} Home Assistant lights &nbsp &nbsp &nbsp [^${HAli}]" , options: atomicState.HALightDevices
-		input "HA_Sensors", "enum", multiple: true, title: "Discovered ${atomicState.HASensorDevices.size()} Home Assistant sensors &nbsp &nbsp &nbsp [^${HAse}]" , options: atomicState.HASensorDevices
-		input "HA_BinarySensors", "enum", multiple: true, title: "Discovered ${atomicState.HABinarySensorDevices.size()} Home Assistant binary sensors &nbsp &nbsp &nbsp [^${HAbs}]" , options:  atomicState.HABinarySensorDevices
-		input "HA_Groups", "enum", multiple: true, title: "Discovered ${atomicState.HAGroupDevices.size()} Home Assistant groups &nbsp &nbsp &nbsp [^${HAg}]" , options: atomicState.HAGroupDevices
-		input "HA_InputBooleans", "enum", multiple: true, title: "Discovered ${atomicState.HAInputBooleanDevices.size()} Home Assistant input booleans &nbsp &nbsp &nbsp [^${HAib}]" , options:  atomicState.HAInputBooleanDevices
+		input "HA_Switches", "enum", multiple: true, title: "Discovered  ${atomicState.HASwitchDevices.size()} Home Assistant switches &nbsp &nbsp &nbsp [^${HAsw}]", options: atomicState.HASwitchDevices.sort()
+		input "HA_Lights", "enum", multiple: true, title: "Discovered ${atomicState.HALightDevices.size()} Home Assistant lights &nbsp &nbsp &nbsp [^${HAli}]" , options: atomicState.HALightDevices.sort()
+		input "HA_Sensors", "enum", multiple: true, title: "Discovered ${atomicState.HASensorDevices.size()} Home Assistant sensors &nbsp &nbsp &nbsp [^${HAse}]" , options: atomicState.HASensorDevices.sort()
+		input "HA_BinarySensors", "enum", multiple: true, title: "Discovered ${atomicState.HABinarySensorDevices.size()} Home Assistant binary sensors &nbsp &nbsp &nbsp [^${HAbs}]" , options:  atomicState.HABinarySensorDevices.sort()
+		input "HA_Groups", "enum", multiple: true, title: "Discovered ${atomicState.HAGroupDevices.size()} Home Assistant groups &nbsp &nbsp &nbsp [^${HAg}]" , options: atomicState.HAGroupDevices.sort()
+		input "HA_InputBooleans", "enum", multiple: true, title: "Discovered ${atomicState.HAInputBooleanDevices.size()} Home Assistant input booleans &nbsp &nbsp &nbsp [^${HAib}]" , options:  atomicState.HAInputBooleanDevices.sort()
 		}
 	}
 }
@@ -149,7 +145,7 @@ def installed()
 	log ( "${app.name} Installed","INFO")
 	atomicState.onoffDevices=[] 
 	atomicState.dimDevices=[]
-	atomicState.sensorDevices[]
+	atomicState.sensorDevices=[]
 	atomicState.HASwitchDevices=[]
 	atomicState.HALightDevices=[]
 	atomicState.HASensorDevices=[]
@@ -223,9 +219,11 @@ def initialize()
 	{
 		log ("Deleting all the MQTT child devices", "DEBUG")
 		removeAllChildDevices()  // somehow these stay orphaned, so need this or need to create differently
-		wipe() // This loses you previously enabled devices but if already enabled it also stops them being added again
+		// wipe() // This loses you previously enabled devices but if already enabled it also stops them being added again
 	}
-
+	if (settings?.WipeDevices == true) {
+		wipe()
+	}
 	atomicState.homie=settings?.homieDevice  // setting the homie tree master device topic for discovery
 	atomicState.HA=settings?.HAStatestreamTopic
 	subscribe(switches, "switch", switched)
@@ -236,6 +234,7 @@ def initialize()
 	subscribe(mqtt,"HASynch", synchDevices)
 	subscribe(mqtt,"OnOffDev", onoffCapability)
 	subscribe(mqtt,"DimDev", dimCapability)
+	subscribe(mqtt,"SensorDev", sensorCapability)
 	subscribe(mqtt,"LabelDevice", reNameDev)
 	subscribe(mqtt,"HASwitchDev", HASwitchCapability)
 	subscribe(mqtt,"HALightDev", HALightCapability)
@@ -456,6 +455,7 @@ def wipe()  // TODO  check when this needs to run .. only having null issues bec
 
 def synchDevices(evt) {
 log ("Resynch device states and HA discovery topics","INFO")
+	return // TO temp hack
 	//TODO Others now  ???
 
 MQTTswitches = (settings?.switches)
@@ -645,7 +645,7 @@ private determineLogLevel(data) {
 def HADiscoveryAdvertise (name, type="none", category="none", payON="true",payOFF="false",nameSuffix='') {  // payON and payOFF vary a lot for sensors so need extra params) {
     if (!settings?.HADiscovery) return   // && HAtype!='?')
 		normName = normalize(name+nameSuffix) 
-	log ("Advertising ${name} device ${type}  ${category} to HA","INFO")
+	log ("Advertising ${name} device ${type}  ${category} to HA","TRACE")
 		sTopic="homie/${atomicState.normHubName}/${normName}"+'/onoff'   //TODO tidy
 		sDimTopic="homie/${atomicState.normHubName}/${normName}"+'/dim'
 		sColorTopic="homie/${atomicState.normHubName}/${normName}"+'/color'
@@ -731,7 +731,7 @@ def HADiscoveryAdvertise (name, type="none", category="none", payON="true",payOF
 		
 		//if (!atomicState.started && payload.size()>1 ){  // shouldnt need this anymore although I see sesnors keep sensing when activated 
 	if (payload.size()>1 ) {
-			log ("Sending Discovery: message "+ name + " "  + payload, "DEBUG")
+			log ("Sending Discovery: message "+ name + " "  + payload, "TRACE") // TODO sending on every state change
 			if (settings?.HARemember=="Remember") mqtt.publishMsg ("${settings?.HADiscoveryTopic}/${type}/${normName}/config", payload.toString(),1,true)
 			else mqtt.publishMsg ("${settings?.HADiscoveryTopic}/${type}/${normName}/config", payload)
 		}
@@ -780,7 +780,7 @@ def subscribeHomieTopic()
 	log ("Adding homie property and node subscription topic for " + atomicState.homie, "INFO")
 	mqtt.subscribeTopic('homie/'+atomicState.homie+'/$nodes')
 	mqtt.subscribeTopic('homie/'+atomicState.homie+'/+/$properties')
-	mqtt.subscribeTopic('homie/'+atomicState.homie+'/+/$type')
+	mqtt.subscribeTopic('homie/'+atomicState.homie+'/+/$type')      //TODO from here could get a device > type list as this returns all devices with a type
 }
 
 def subscribeHomieStateTopics()
@@ -789,8 +789,9 @@ def subscribeHomieStateTopics()
 	mqtt.subscribeTopic('homie/'+atomicState.homie+'/+/onoff')
 	mqtt.subscribeTopic('homie/'+atomicState.homie+'/+/dim')
 	// how to add sensors ??	looks like individually				//mqtt.subscribeTopic('homie/'+atomicState.homie+'/+/$type') already above
-	mqtt.subscribeTopic('homie/'+atomicState.homie+'/+/sensorname')	// this is no good for sensors as each topic is named differently and need $type=sensor
-	//mqtt.subscribeTopic('homie/'+atomicState.homie+'/+/+')		// need to check for $sensor and then enable whole tree or read $properties and enable individually
+	//mqtt.subscribeTopic('homie/'+atomicState.homie+'/+/sensorname')	// TODO this is no good for sensors as each topic is named differently and need $type=sensor
+    mqtt.subscribeTopic('homie/'+atomicState.homie+'/+/+/$unit')    // This will return sensors that have units from which we could grab sensor name and build tree - and subscribe to enabled devices
+	//mqtt.subscribeTopic('homie/'+atomicState.homie+'/+/+')		// need to check for $sensor and then enable whole tree or read $properties and enable individually or use $type above
 	// too much returned by above
 	// maybe add sensor name from enabled devices ??    			// how do we determine its a sensor value for a random incoming MQTT message......?
 																	// need to know either via $sensor or name ??
@@ -888,7 +889,7 @@ def switchedDim(evt, name=null, type=null, state=null)
 		xName=evt.name
 	} 
 	else xName=name
-	log("Device switchedDim ${state}  ${name} ${xName}", "TRACE")
+	log("Device switchedDim ${state}  ${name} ${xName}", "ERROR")
 		if (settings?.HEBasic)
 		{
 				mqtt.publishMsg ("Hubitat/${settings?.hubName}/${name}/onoff","${state.toString()}") // basic MQTT status  TODO persistence ?
@@ -923,7 +924,7 @@ def dimmed(evt, name=null, type=null, state=null)
 		xName=evt.name
 	} 
 	else xName=name
-	log ("Device dimmed ${state}  ${name}", "DEBUG")
+	log ("Device dimmed ${state}  ${name}", "ERROR")
 	if (settings?.HEBasic) {
 		mqtt.publishMsg ("Hubitat/${settings?.hubName}/${name}/dim","${state}")
 	}
@@ -1256,10 +1257,10 @@ def onoffCapability(evt) {
 	temp = atomicState.onoffDevices
 	if (temp==null) temp=[]
 	if (temp.contains(evt.value)) {
-		// log ("Already in dropdown list: ${evt.value}", "TRACE")
+		log ("Already in dropdown list: ${evt.value}", "TRACE")
 	}
 	else { 
-		//log ("Adding to dropdown list: ${evt.value}", "DEBUG")
+		log ("Adding to dropdown list: ${evt.value}", "TRACE")
 		temp.add(evt.value)
 		atomicState.onoffDevices=temp
 	}
@@ -1271,14 +1272,28 @@ def dimCapability(evt) {  //TODO merge with above
 	temp = atomicState.dimDevices
 	if (temp==null) temp=[]
 	if (temp.contains(evt.value)) {
-		//log ("Already in list: ${evt.value}", "TRACE")
+		log ("Already in list: ${evt.value}", "TRACE")
 	}
 	else {
-		//log ("Homie adding dim to list: ${evt.value}", "DEBUG")
+		log ("Homie adding dim to list: ${evt.value}", "TRACE")
 		temp.add(evt.value)
 		atomicState.dimDevices = temp
 	}
 	createChildDevice (evt.value, "dim", "homie", evt.value)
+}
+
+def sensorCapability(evt) {  //TODO merge with above
+	temp = atomicState.sensorDevices
+	if (temp==null) temp=[]
+	if (temp.contains(evt.value)) {
+	log ("Already in list: ${evt.value}", "TRACE")
+	}
+	else {
+		log ("Homie adding sensor to list: ${evt.value}", "TRACE")
+		temp.add(evt.value)
+		atomicState.sensorDevices = temp
+	}
+	createChildDevice (evt.value, "sensor", "homie", evt.value)
 }
 
 def HASwitchCapability(evt) {  //TODO merge with above
@@ -1662,7 +1677,7 @@ def binarySensorEvent(evt) {
 			return
 		}	
 	}	
-	//log.info "Checking how I handle a ${data.status} message for ${evt.value} of type ${child.typeName} ??"
+	//log ("Checking how I handle a ${data.status} message for ${evt.value} of type ${child.typeName} ??", "DEBUG")
 	typeName=child.typeName
 		
 			if (data.status=="off") {
@@ -2255,6 +2270,7 @@ def devSummary()
 	if (settings?.homieDiscovery){
 		log ("    Discovered ${atomicState.onoffDevices.size()} homie onoff devices", "INFO")
         log ("    Discovered ${atomicState.dimDevices.size()} homie dim devices", "INFO")
+		log ("    Discovered ${atomicState.sensorDevices.size()} homie sensor devices", "INFO")
 	}
 	if (settings?.HAStatestream) {
 		log ("    Discovered ${atomicState.HASwitchDevices.size()} HA switch devices", "INFO")
