@@ -100,7 +100,11 @@ def uninstalled() {
 // Key method Handles all the data back from MQTT subscriptions
 def parse(String description) {
 	def topic=alphaV1parseMqttMessage(description).topic.split('/')
+	def topicCount=topic.size()
 	def payload=alphaV1parseMqttMessage(description).payload.split(',')
+	
+	// TODO make more use of topicCount for topic validation - some topics that currently match have further subTopics
+	
 	if (topic[0]==state.HAStatestreamTopic)
 		{
 			if (topic[1]=='status') {  // HA LWT
@@ -270,58 +274,37 @@ def parse(String description) {
 			}
 		
 			if (topic[3]=='onoff') {
-				log("Received homie OnOff state from MQTT ${topic[2]} " + status, "WARN")
 				def evt1 = createEvent(name: "OnOff", value: topic[2], data: [status: payload[0], topic: alphaV1parseMqttMessage(description).topic], isStateChange: true)  //, key2: payload])
 				pause (state.delay) // pace
 				return evt1
 			}
 
-			else if (topic[3]=='dim') {  // TODO is this level handling problematic assuming 1.0 ?
+			else if (topic[3]=='dim' && topicCount==4) {  // TODO is this level handling problematic assuming 1.0 ?
 				float convertedNumber = Float.parseFloat(payload[0])*100
 				int intLevel = convertedNumber = convertedNumber.round()
 				adjLevel=intLevel.toString()
-				log("Received homie Dim state from MQTT ${topic[2]} " + payload + " " +adjLevel,"WARN")
 				def evt2 = createEvent(name: "Dim", value: topic[2], data: [state: "level", level: adjLevel, topic: alphaV1parseMqttMessage(description).topic], isStateChange: true)
 				pause (state.delay) // pace
 				return evt2
 			}
 		
-/*
-else if (topic[3]=='$name') {  // This is rubbish
-				log.error "Got a name of " + payload[0] + " for " + topic[2]
-				found = alphaV1parseMqttMessage(description).payload.indexOf("dim")
-				if (found >=0) {
-					log ("Device ${topic[2]} has dim capability", "ERROR")
-					buildDimDevices(topic[2])
-					}
-				else  {  //TODO need more checks
-				found = alphaV1parseMqttMessage(description).payload.indexOf("onoff")
-				if (found >=0) {
-					log ("Device ${topic[2]} has onoff capability", "ERROR")
-					buildOnOffDevices(topic[2])
-					}
-				}
-				return
-				}
-*/
-		
 			else if (topic[3]=='$type') {
-				log ("Got a type of " + payload[0] + " for " + topic, "INFO")
+				//log ("Got a type of " + payload[0] + " for " + topic, "TRACE")
 				switch (payload[0]) {
 					case 'switch':
-						def evt33 = createEvent([name: "OnOffDev", value: topic[2], isStateChange: true], isStateChange: true)
+						def evt33 = createEvent(name: "OnOffDev", value: topic[2], isStateChange: true)
 						break
 					case 'light':
-						evt33 = createEvent([name: "DimDev", value: topic[2], isStateChange: true], isStateChange: true)
+						evt33 = createEvent(name: "DimDev", value: topic[2], isStateChange: true)
 						break
 					case 'sensor':
-						evt33 = createEvent([name: "SensorDev", value: topic[2], isStateChange: true], isStateChange: true)
+						evt33 = createEvent(name: "SensorDev", value: topic[2], isStateChange: true)
 						break
 					case 'thermostat':
 						log ("homie " + payload[0] +" type not handled yet for device: "+ topic,"WARN")
 						break
 					case 'socket':
-						def evt33 = createEvent([name: "OnOffDev", value: "hiccppup", isStateChange: true], isStateChange: true)
+						def evt33 = createEvent(name: "OnOffDev", value: "hiccppup", isStateChange: true)
 						break
 					default:			
 						log ("homie " + payload[0] +" type not handled for device: "+ topic,"WARN")	
