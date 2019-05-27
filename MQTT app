@@ -175,7 +175,7 @@ def uninstalled() {
 
 def initialize()
 {
-	log.info "${app.name} pre3 alpha3 Initialized"
+	log.info "${app.name} pre5 alpha3 Initialized"
 	//def hub = location.hubs[0]
 	atomicState.normHubName = normalize(settings?.hubName)
 	log ("Hubitat hub name is : " + settings?.hubName,"INFO")
@@ -206,7 +206,7 @@ def initialize()
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$state','init',1,true)
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$homie','3.0.1',1,true) 
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$implementation','groovy:uk.co.ukusa.mqtt',1,true)
-		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$fw/version','3p3',1,true)
+		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$fw/version','3p5',1,true)
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$fw/name','alpha',1,true)
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$name',settings?.hubName,1,true)
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$mac','BB:AA:DD:AA:55:55',1,true)
@@ -306,19 +306,20 @@ def initialize()
 	if (settings?.adhoc!= null)
 	{
 		log ("["+(settings?.adhoc.size()) +"] manual/adhoc devices enabled for MQTT","INFO")
-		atomicState.delay += 10  // TODO check we need this much delay
+		atomicState.delay += 1  // TODO tweak check we need this much delay reduced from 10 to 1
 		index=0
 		for (String item : settings?.adhoc) {
-			atomicState.delay += 1
-			pauseExecution(500)  // TODO paces responses - NB sendTopics runs after 10 seconds currently i.e 20 devices - need to tweak
+			//atomicState.delay += 1
+			pauseExecution(200)  // TODO paces responses - NB sendTopics runs after 10 seconds currently i.e 20 devices - need to tweak
 			try {
 				adhoc[index++].getStateTopics()
 				count++
 			}
 			catch (e) {
-				log ("Device ${item} does not have MQTT virtual capabilities","WARN")
+				log ("(Telnet) Device ${item} does not have MQTT virtual capabilities","WARN")
 			}
 		}
+		//atomicState.delay+= count  //TODO tweak  need to keep as int
 	}
 	atomicState.adhocDevices=count // settings?.adhoc.size()
 	log ("reinitializing", "TRACE")
@@ -416,22 +417,22 @@ def initialize()
 	if(settings?.homieDiscovery) {
 		log ("homie discovery enabled", "INFO")
 		subscribeHomieTopic()
-		atomicState.delay += 10
-		runIn(atomicState.delay, "subscribeHomieStateTopics")
-		atomicState.delay += 10
+		atomicState.delay += 5  //TODO tweak
+		runIn(atomicState.delay, "subscribeHomieStateTopics")  
+		atomicState.delay += 2  // TODO tweak - we have the number of homie devices very early in MQTT driver  reduced from 10 to 2
 		runIn (atomicState.delay, "subscribeHomieNameTopics")
-		atomicState.delay += 10 
+		atomicState.delay += 5 // TODO tweak
 	}
 	else log ("Skipping homie MQTT discovery", "INFO")
 	
 	if(settings?.HAStatestream){
 		log ("HA stateStream enabled", "INFO")
-		atomicState.delay += 10
+		atomicState.delay += 5  //TODO tweak
 		runIn (atomicState.delay, "subscribeHADevices")
-		atomicState.delay += 10
+		atomicState.delay += 5  //TODO tweak
 		runIn (atomicState.delay, "subscribeHADeviceEvents")
-		atomicState.delay += 15 
-		atomicState.delay+=60  // TODO check and calculate based on # sensors
+		atomicState.delay += 10 // TODO tweak
+		atomicState.delay+=20  // TODO check and calculate based on # sensors
 	}
 	else log ("Skipping HA stateStream MQTT discovery", "INFO")
 	
@@ -454,14 +455,14 @@ def wipe()  // TODO  check when this needs to run .. only having null issues bec
 }
 
 def synchDevices(evt) {
-log ("Resynch device states and HA discovery topics","INFO")
-	return // TO temp hack
+log ("Resynch MQTT device states and HA discovery topics","INFO")
+
 	//TODO Others now  ???
 
 MQTTswitches = (settings?.switches)
 	if (MQTTswitches != null) {
 		for (String item : MQTTswitches) {
-			switched(null, item, MQTTswitches.currentSwitch[0]) 
+			switched(null, item, "onoff", MQTTswitches.currentSwitch[0]) //TODO should this be switch ??
 		}
 	}	
 
@@ -469,24 +470,25 @@ MQTTdimmers = (settings?.dimmers)
 	MQTTdimmers = (settings?.dimmers)
 	if (MQTTdimmers != null){
 		for (String item : MQTTdimmers) {
-			switchedDim(null, item, MQTTdimmers.currentSwitch[0])
-			dimmed(null, item, MQTTdimmers.currentLevel[0])
+			switchedDim(null, item,"onoff",  MQTTdimmers.currentSwitch[0])  //TODO BUG check might have to be RGB
+
+			dimmed(null, item, "dim", MQTTdimmers.currentLevel[0])
 		}
 	}
 	
 MQTTRGB = (settings?.colour)
 	if (MQTTRGB != null){
 		for (String item : MQTTRGB) {
-			switchedDim(null, item, MQTTRGB.currentSwitch[0])
-			dimmed(null, item, MQTTRGB.currentLevel[0])
+			switchedDim(null, item,"onoff", MQTTRGB.currentSwitch[0])
+			dimmed(null, item, "dim", MQTTRGB.currentLevel[0])
 		}
 	}
 	
 MQTTRGBT = (settings?.colourT)
 	if (MQTTRGBT != null){
 		for (String item : MQTTRGBT) {
-			switchedDim(null, item, MQTTRGBT.currentSwitch[0])
-			dimmed(null, item, MQTTRGBT.currentLevel[0])
+			switchedDim(null, item,"onoff", MQTTRGBT.currentSwitch[0])
+			dimmed(null, item, "dim", MQTTRGBT.currentLevel[0])
 		}
 	}	
 	
@@ -729,8 +731,8 @@ def HADiscoveryAdvertise (name, type="none", category="none", payON="true",payOF
 		// will see what results if we repeatedly send them - maybe OK as send only
 		// Was OK for sensors but RGB bulbs wont be - got mismatch of level/state - will need to send just once so need state synch
 		
-		//if (!atomicState.started && payload.size()>1 ){  // shouldnt need this anymore although I see sesnors keep sensing when activated 
-	if (payload.size()>1 ) {
+		if (!atomicState.started && payload.size()>1 ){  // shouldnt need this anymore although I see sesnors keep sensing when activated 
+	        //if (payload.size()>1 ) {
 			log ("Sending Discovery: message "+ name + " "  + payload, "TRACE") // TODO sending on every state change
 			if (settings?.HARemember=="Remember") mqtt.publishMsg ("${settings?.HADiscoveryTopic}/${type}/${normName}/config", payload.toString(),1,true)
 			else mqtt.publishMsg ("${settings?.HADiscoveryTopic}/${type}/${normName}/config", payload)
@@ -777,7 +779,7 @@ private removeAllChildDevices() {
 
 def subscribeHomieTopic()
 {
-	log ("Adding homie property and node subscription topic for " + atomicState.homie, "INFO")
+	log ("Adding homie property and node subscription topics for " + atomicState.homie, "INFO")
 	mqtt.subscribeTopic('homie/'+atomicState.homie+'/$nodes')
 	mqtt.subscribeTopic('homie/'+atomicState.homie+'/+/$properties')
 	mqtt.subscribeTopic('homie/'+atomicState.homie+'/+/$type')      //TODO from here could get a device > type list as this returns all devices with a type
@@ -785,7 +787,7 @@ def subscribeHomieTopic()
 
 def subscribeHomieStateTopics()
 {
-	log ("Adding homie onoff & dim events subscription topic", "INFO")
+	log ("Adding homie onoff & dim events subscription topics ", "INFO")
 	mqtt.subscribeTopic('homie/'+atomicState.homie+'/+/onoff')
 	mqtt.subscribeTopic('homie/'+atomicState.homie+'/+/dim')
 	// how to add sensors ??	looks like individually				//mqtt.subscribeTopic('homie/'+atomicState.homie+'/+/$type') already above
@@ -802,13 +804,13 @@ def subscribeHomieStateTopics()
 
 def subscribeHomieNameTopics()
 {
-	log ("Adding homie name subscription topic", "INFO")
+	log ("Adding homie name subscription topics ", "INFO")
 	mqtt.subscribeTopic('homie/'+atomicState.homie+'/+/$name')
 }
 
 def subscribeHADevices()  // where is this called from ?
 {
-	log ("Adding HA switches, lights and sensors friendly names topic", "INFO")
+	log ("Adding HA switches, lights and sensors friendly names topics ", "INFO")
 	mqtt.subscribeTopic(atomicState.HA+'/switch/+/friendly_name')
 	mqtt.subscribeTopic(atomicState.HA+'/light/+/friendly_name')
 	mqtt.subscribeTopic(atomicState.HA+'/sensor/+/friendly_name') // // this creates device
@@ -862,7 +864,7 @@ def switched(evt, name=null, type=null, state=null)
 		}
 	if (settings?.homiePublish) {
 			normName = normalize(name) 
-			if (state=="on") nState = "true" else nState = "false"
+			if (state=="on") nState = "true" else nState = "false"    //TODO make flexible
 				
 		
 			//================  Limited homie spec implemenation ================
@@ -875,6 +877,7 @@ def switched(evt, name=null, type=null, state=null)
 			mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/onoff/$retained',"true",1,true)
 			sTopic="homie/${atomicState.normHubName}/${normName}"+'/onoff'
 			mqtt.publishMsg (sTopic,nState,1,settings?.homieStatesPersist) 
+		    //log ("Updated ${sTopic} to ${nState}", "ERROR")   // only for log visibility
 			//===================================================================
 	}
 		HADiscoveryAdvertise(name,"switch","none")		
@@ -909,6 +912,7 @@ def switchedDim(evt, name=null, type=null, state=null)
 			mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/onoff/$datatype',"boolean",1,true)
 			mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/onoff/$retained',"true",1,true)
 			mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/onoff',nState.toString(),1,settings?.homieStatesPersist)
+			//log ("Updated homie/${atomicState.normHubName}/${normName}/onoff to ${nState.toString()}", "ERROR")   // only for log visibility
 			//===================================================================
 		}
 		if (settings?.HADiscovery){
@@ -935,6 +939,7 @@ def dimmed(evt, name=null, type=null, state=null)
 		sTopic="homie/${atomicState.normHubName}/${normName}"+'/onoff'
 		sDimTopic="homie/${atomicState.normHubName}/${normName}"+'/dim'
 		mqtt.publishMsg (sDimTopic,"${state}",1,true)
+		//log ("Updated ${sDimTopic} to ${state}", "ERROR")   // only for log visibility
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/$properties',"onoff,dim",1,true)  // limited homie implementation
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/$name',"${name}",1,true)  
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/$type',"light",1,true)   
@@ -1105,7 +1110,7 @@ def sensorDevices(evt, name=null, type=null, state=null, multiple=false)  // sub
 			mqtt.publishMsg (sTopic+'/'+category+'/$retained',"true",1,true)
 			//mqtt.publishMsg (sTopic+'/'+category+'/$unit','°C',1,true)
 			mqtt.publishMsg (sTopic+'/'+category,state.toString(),1,settings?.homieStatesPersist)  // This publishes the actual event value
-			
+			//log ("Updated " +sTopic+'/'+ category + " to ${nState.toString()}", "ERROR")   // only for log visibility
 			//===================================================================
 	}
 	// payON and payOFF vary a lot for sensors so need extra params
@@ -2277,8 +2282,8 @@ def devSummary()
 		log ("    Discovered ${atomicState.HALightDevices.size()} HA light devices", "INFO")
 		log ("    Discovered ${atomicState.HASensorDevices.size()} HA sensor devices", "INFO")
 		log ("    Discovered ${atomicState.HABinarySensorDevices.size()} HA binary sensor devices", "INFO")
-		log ("    Discovered ${atomicState.HAGroupDevices.size()} HA group devices", "INFO")
-		log ("    Discovered ${atomicState.HAInputBooleanDevices.size()} HA group devices", "INFO")
+		log ("    Discovered ${atomicState.HAInputBooleanDevices.size()} HA input boolean devices", "INFO")
+		log ("    Discovered ${atomicState.HAGroupDevices.size()} HA groups", "INFO")
 	}
 	log ("================== Startup complete ==================", "INFO")
 	atomicState.started=true
