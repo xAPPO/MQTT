@@ -56,7 +56,7 @@ def initialize() {
         log ("initialize error: ${e.message}", "ERROR")
 		//TODO retries
     }
-	log.info "MQTT client pre3 alpha3 initialised"
+	log.info "MQTT client pre4 alpha3 initialised"
 	log ("Connected as Hubitat_${state.normHubName} to MQTT broker ${settings?.MQTTBroker}", "INFO")
 	state.connectionAttempts = 0
 	state.delay=100  //delay between events - increase if you have a lot of discovered MQTT devices > 100
@@ -106,7 +106,7 @@ def parse(String description) {
 			if (topic[1]=='status') {  // HA LWT
 				if (payload[0]=="online") {
 					log ("Home Assistant [${state.HAStatestreamTopic}] is ONLINE","INFO")
-					def evt23 = createEvent(name: "HASynch", value: state.HAStatestreamTopic)
+					def evt23 = createEvent(name: "HASynch", value: state.HAStatestreamTopic, isStateChange: true)
 					return evt23
 				}
 				else if (payload[0]=="offline") {
@@ -118,18 +118,18 @@ def parse(String description) {
 
 				if (topic[3]=='state'){
 				//log ("RX::Sensor state::  " + topic[2] + " is " + payload[0], "TRACE")
-				def evt10 = createEvent(name: "Sensor", value: topic[2], data: [status: payload[0]])  //, key2: payload])
+				def evt10 = createEvent(name: "Sensor", value: topic[2], data: [status: payload[0]], isStateChange: true)  //, key2: payload])
 				pause (state.delay) // pace
 				return evt10
 				}
 				else if (topic[3]=='friendly_name'){ 
 				log ("Device ${topic[2]} is a HA sensor and is called " +payload[0], "TRACE")
-				def evt11= createEvent([name: "HASensorDev", value: topic[2], data: [label: deQuote(payload[0])]])
+				def evt11= createEvent(name: "HASensorDev", value: topic[2], data: [label: deQuote(payload[0])], isStateChange: true)
 				pause (state.delay) // pace
 				return evt11
 				}
 				else if (topic[3]=='unit_of_measurement'){ 
-				def evt11= createEvent([name: "SensorUnit", value: topic[2], data: [payload: payload[0]]])
+				def evt11= createEvent(name: "SensorUnit", value: topic[2], data: [payload: payload[0]], isStateChange: true)
 				pause (state.delay) // pace
 				return evt11
 				}
@@ -139,13 +139,13 @@ def parse(String description) {
 
 				if (topic[3]=='state'){
 				//log ("RX::Binary Sensor state::  " + topic[2] + " is " + payload[0], "DEBUG")
-				def evt10 = createEvent(name: "BinarySensor", value: topic[2], data: [status: payload[0]])  //, key2: payload])
+				def evt10 = createEvent(name: "BinarySensor", value: topic[2], data: [status: payload[0]], isStateChange: true)  //, key2: payload])
 				pause (state.delay) // pace
 				return evt10
 				}
 				else if (topic[3]=='friendly_name'){ 
 				log ("Device ${topic[2]} is a HA binary sensor and is called " +payload[0], "TRACE")
-				def evt19 = createEvent(name: "LabelDevice", value: "MQTT:HA_"+topic[2], data: [label: deQuote(payload[0])])
+				def evt19 = createEvent(name: "LabelDevice", value: "MQTT:HA_"+topic[2], data: [label: deQuote(payload[0])], isStateChange: true)
 				 //return evt19
 				// just renames the device as creation now from 'device_class  // need to ensure device_class arrives first so driver is correct when created
 				//def evt19= createEvent([name: "HABinarySensorDev", value: topic[2], data: [label: payload[0]]])
@@ -155,9 +155,7 @@ def parse(String description) {
 				else if (topic[3]=='device_class'){ 
 				//log ("Device ${topic[2]} is a HA binary sensor and is of type " +payload[0], "TRACE")
 				// create device from here as need device_class to select driver
-				// def evt18= createEvent([name: "HABinarySensorDev", value: topic[2], data: [label: payload[0]]])
-				//evt18= createEvent([name: "SensorDevClass", value: topic[2], data: [type: payload[0]]])  ?? Unused now ?? TODO
-				def evt18= createEvent([name: "HABinarySensorDev", value: topic[2], data: [type: deQuote(payload[0])]])  // TODO handle in app
+				def evt18= createEvent(name: "HABinarySensorDev", value: topic[2], data: [type: deQuote(payload[0])], isStateChange: true)  // TODO handle in app
 				pause (state.delay) // pace
 				return evt18
 				}
@@ -166,12 +164,12 @@ def parse(String description) {
 		else if (topic[1]=='switch') {
 			if (topic[3]=='friendly_name') {
 				log ("Device ${topic[2]} is a HA switch and is called " +payload[0], "TRACE")
-				def evt3= createEvent([name: "HASwitchDev", value: topic[2], data: [label: deQuote(payload[0])]])
+				def evt3= createEvent(name: "HASwitchDev", value: topic[2], data: [label: deQuote(payload[0])], isStateChange: true)
 				pause (state.delay) // pace
 				return evt3
 			}
 			if (topic[3]=='state'){
-				def evt4 = createEvent(name: "OnOff", value: topic[2], data: [status: payload[0]])  //, key2: payload])
+				def evt4 = createEvent(name: "OnOff", value: topic[2], data: [status: payload[0]], isStateChange: true)  //, key2: payload])
 				pause (state.delay) // pace
 				return evt4
 			}
@@ -182,12 +180,12 @@ def parse(String description) {
 		else if (topic[1]=='group') {  
 			if (topic[3]=='friendly_name') {
 				log ("Device ${topic[2]} is a HA group and is called " +payload[0], "TRACE")
-				def evt3= createEvent([name: "HAGroupDev", value: topic[2], data: [label: deQuote(payload[0])]])
+				def evt3= createEvent(name: "HAGroupDev", value: topic[2], data: [label: deQuote(payload[0])], isStateChange: true)
 				pause (state.delay) // pace
 				return evt3
 			}
 			if (topic[3]=='state'){
-				def evt4 = createEvent(name: "Group", value: topic[2], data: [status: payload[0]])  //, key2: payload])
+				def evt4 = createEvent(name: "Group", value: topic[2], data: [status: payload[0]], isStateChange: true)  //, key2: payload])
 				pause (state.delay) // pace
 				//log ("Device ${topic[2]} is a HA group and is turned " +payload[0], "TRACE")
 				return evt4
@@ -199,12 +197,12 @@ def parse(String description) {
 		else if (topic[1]=='input_boolean') { 
 			if (topic[3]=='friendly_name') {
 				log ("Device ${topic[2]} is a HA input boolean and is called " +payload[0], "TRACE")
-				def evt3= createEvent([name: "HAInputBooleanDev", value: topic[2], data: [label: deQuote(payload[0])]])
+				def evt3= createEvent(name: "HAInputBooleanDev", value: topic[2], data: [label: deQuote(payload[0])], isStateChange: true)
 				pause (state.delay) // pace
 				return evt3
 			}
 			if (topic[3]=='state'){
-				def evt4 = createEvent(name: "InputBoolean", value: topic[2], data: [status: payload[0]])  //, key2: payload])
+				def evt4 = createEvent(name: "InputBoolean", value: topic[2], data: [status: payload[0]], isStateChange: true)  //, key2: payload])
 				pause (state.delay) // pace
 				//log ("Device ${topic[2]} is a HA input boolean and is " +payload[0], "TRACE")
 				return evt4
@@ -224,12 +222,12 @@ def parse(String description) {
 						friendlyName=friendlyName.substring(0, friendlyName.length() - 1)
 				}
 				log ("Device ${topic[2]} is a HA light and is called " +payload[0] + " " + friendlyName,"TRACE")
-				def evt5= createEvent([name: "HALightDev", value: topic[2], data: [label: deQuote(friendlyName)]])
+				def evt5= createEvent(name: "HALightDev", value: topic[2], data: [label: deQuote(friendlyName)], isStateChange: true)
 				pause (state.delay) // pace
 				return evt5
 			}
 			if (topic[3]=='state'){
-				def evt6 = createEvent(name: "OnOff", value: topic[2], data: [status: payload[0]])  //, key2: payload])
+				def evt6 = createEvent(name: "OnOff", value: topic[2], data: [status: payload[0]], isStateChange: true)  //, key2: payload])
 				pause (state.delay) // pace
 				return evt6
 			}
@@ -237,7 +235,7 @@ def parse(String description) {
 				float dLevel = Float.parseFloat(payload[0])/2.55
 				int iLevel = (int) dLevel.round()
 				sLevel=iLevel.toString()
-				def evt9 = createEvent(name: "Dim", value: topic[2], data: [level: sLevel])
+				def evt9 = createEvent(name: "Dim", value: topic[2], data: [level: sLevel], isStateChange: true)
 				pause (state.delay) // pace
 				return evt9
 			}
@@ -255,7 +253,7 @@ def parse(String description) {
 	
 	else if (topic[0]=="homie" && topic[1]== "${state.normHubName}"){ //local - look for incoming 'set' commands that control Hubitat devices here	
 		if (topic[4]=="set") {
-				 def evt12 = createEvent(name: "Command", value: topic[2], data: [state: payload[0], payload: payload, cmd: topic[3]])
+				 def evt12 = createEvent(name: "Command", value: topic[2], data: [state: payload[0], payload: payload, cmd: topic[3]], isStateChange: true)
 				 pause (state.delay) // pace
 			log ("Received this " + payload + "  " + payload.size(), "TRACE")
 				 return evt12					
@@ -263,56 +261,86 @@ def parse(String description) {
 				else {
 					log ("Received unexpected message from homie " + topic + " " + payload, "WARN")
 				}
-			}
+			}// not homie local control
 	
 	else if (topic[0]=="homie" && topic[1]== state.homieDeviceDiscovery)  {   // remote subscribed homie 
-			if (topic[2]=='$nodes') {
+			if (topic[2]=='$nodes') {  // can I pass this directly to the input selector ??
 				log ("============= ${payload.size()} homie entries for device ${topic[1]} =============",, "INFO")
 				return
 			}
-			if (topic[3]=='$properties') {  //properties for a specific device (topic[2])  //TODO messy and assumptive - errors on homie/device/$nodes outofbounds
-				found = alphaV1parseMqttMessage(description).payload.indexOf("dim")
-				if (found >=0) {
-					//log ("Device ${topic[2]} has dim capability", "INFO")
-					buildDimDevices(topic[2])
-					}
-			else  {  //TODO need more checks
-				found = alphaV1parseMqttMessage(description).payload.indexOf("onoff")
-				if (found >=0) {
-					//log ("Device ${topic[2]} has onoff capability", "INFO")
-					buildOnOffDevices(topic[2])
-					}
-				}
-				return
-				}	
-
-			 if (topic[3]=='$name') {
-				 def evt0 = createEvent(name: "LabelDevice", value: "MQTT:homie_"+topic[2], data: [label: payload[0]])
-				 pause (state.delay) // pace
-				 return evt0
-			 }
 		
 			if (topic[3]=='onoff') {
-				log("Received homie OnOff state from MQTT ${topic[2]} " + status, "TRACE")
-				def evt1 = createEvent(name: "OnOff", value: topic[2], data: [status: payload[0], topic: alphaV1parseMqttMessage(description).topic])  //, key2: payload])
+				log("Received homie OnOff state from MQTT ${topic[2]} " + status, "WARN")
+				def evt1 = createEvent(name: "OnOff", value: topic[2], data: [status: payload[0], topic: alphaV1parseMqttMessage(description).topic], isStateChange: true)  //, key2: payload])
 				pause (state.delay) // pace
 				return evt1
 			}
 
-			if (topic[3]=='dim') {  // TODO is this level handling problematic assuming 1.0 ?
+			else if (topic[3]=='dim') {  // TODO is this level handling problematic assuming 1.0 ?
 				float convertedNumber = Float.parseFloat(payload[0])*100
 				int intLevel = convertedNumber = convertedNumber.round()
 				adjLevel=intLevel.toString()
-				log("Received homie Dim state from MQTT ${topic[2]} " + payload + " " +adjLevel,"TRACE")
-				def evt2 = createEvent(name: "Dim", value: topic[2], data: [state: "level", level: adjLevel, topic: alphaV1parseMqttMessage(description).topic])
+				log("Received homie Dim state from MQTT ${topic[2]} " + payload + " " +adjLevel,"WARN")
+				def evt2 = createEvent(name: "Dim", value: topic[2], data: [state: "level", level: adjLevel, topic: alphaV1parseMqttMessage(description).topic], isStateChange: true)
 				pause (state.delay) // pace
 				return evt2
 			}
+		
+/*
+else if (topic[3]=='$name') {  // This is rubbish
+				log.error "Got a name of " + payload[0] + " for " + topic[2]
+				found = alphaV1parseMqttMessage(description).payload.indexOf("dim")
+				if (found >=0) {
+					log ("Device ${topic[2]} has dim capability", "ERROR")
+					buildDimDevices(topic[2])
+					}
+				else  {  //TODO need more checks
+				found = alphaV1parseMqttMessage(description).payload.indexOf("onoff")
+				if (found >=0) {
+					log ("Device ${topic[2]} has onoff capability", "ERROR")
+					buildOnOffDevices(topic[2])
+					}
+				}
+				return
+				}
+*/
+		
+			else if (topic[3]=='$type') {
+				log ("Got a type of " + payload[0] + " for " + topic, "INFO")
+				switch (payload[0]) {
+					case 'switch':
+						def evt33 = createEvent([name: "OnOffDev", value: topic[2], isStateChange: true], isStateChange: true)
+						break
+					case 'light':
+						evt33 = createEvent([name: "DimDev", value: topic[2], isStateChange: true], isStateChange: true)
+						break
+					case 'sensor':
+						evt33 = createEvent([name: "SensorDev", value: topic[2], isStateChange: true], isStateChange: true)
+						break
+					case 'thermostat':
+						log ("homie " + payload[0] +" type not handled yet for device: "+ topic,"WARN")
+						break
+					case 'socket':
+						def evt33 = createEvent([name: "OnOffDev", value: "hiccppup", isStateChange: true], isStateChange: true)
+						break
+					default:			
+						log ("homie " + payload[0] +" type not handled for device: "+ topic,"WARN")	
+					    break
+				}
+					pause (state.delay)
+					return evt33  // TODO - need to sure it exists .. OK to return from here inside an else ?  isStateChange: true needed otherwise if no change to value: event is sent
+			}
+			else if (topic[3]=='$name') {  
+				 log("Received homie name from MQTT ${topic[2]} " + status, "TRACE")
+				 def evt0 = createEvent(name: "LabelDevice", value: "MQTT:homie_"+topic[2], data: [label: payload[0]], isStateChange: true)
+				 pause (state.delay) // pace
+				 return evt0
+			 }
 	} // end remote homie
 
 	else {  // unhandled parse messages arrive here
 		log ("ad hoc MQTT parse  alphaV1parseMqttMessage(description).topic       ${payload[0]}", "DEBUG")
-		sendEvent (name: "Lookup", value: payload[0], data: [topic: alphaV1parseMqttMessage(description).topic]) 
+		sendEvent (name: "Lookup", value: payload[0], data: [topic: alphaV1parseMqttMessage(description).topic], isStateChange: true) 
 
 	}
 }
@@ -386,18 +414,6 @@ def setCommandTopic (String Name, String Topic)
 	child.setCommandTopic(Topic)
 }
 */
-
-def buildOnOffDevices (String device)
-{
-	pause (state.delay) // pace
-	sendEvent([name: "OnOffDev", value: device])
-}
-
-def buildDimDevices (String device)
-{
-	pause (state.delay) // pace
-	sendEvent([name: "DimDev", value: device])
-}
 
 def pause(millis) {
 	pauseExecution(millis)	
