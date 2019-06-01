@@ -1246,7 +1246,6 @@ def colourDevices(evt, name=null,type=null, state=null) {
 				HAtype="RGB"
 			}
 			else if (xType=='onoff'){   // Dont think this happens  - this topic created by the 'switched' event
-				log.error "Yes it does with state ${state}"
 				category='ONOFF'
 				mqtt.publishMsg (sTopic+'/'+category+'/$datatype','boolean',1,true)
 				//mqtt.publishMsg (sTopic+'/'+category+'/$unit','?',1,true)
@@ -1256,7 +1255,6 @@ def colourDevices(evt, name=null,type=null, state=null) {
 				HAtype="RGB"
 			}
 			else if (xType=='switch'){   // hope this doesnt conflict with switchedDim
-				log.error "Yes this does too with state ${state}"
 				category='onoff'
 				mqtt.publishMsg (sTopic+'/'+category+'/$datatype','boolean',1,true)
 				mqtt.publishMsg (sTopic+'/'+category+'/$settable','true',1,true)	
