@@ -56,7 +56,7 @@ def initialize() {
         log ("initialize error: ${e.message}", "ERROR")
 		//TODO retries
     }
-	log.info "MQTT client pre4 alpha3 initialised"
+	log.info "MQTT client pre5 alpha3 initialised"
 	log ("Connected as Hubitat_${state.normHubName} to MQTT broker ${settings?.MQTTBroker}", "INFO")
 	state.connectionAttempts = 0
 	state.delay=100  //delay between events - increase if you have a lot of discovered MQTT devices > 100
@@ -255,9 +255,28 @@ def parse(String description) {
 
 		} // not HA
 	
+		else if (topic[0]=="Hubitat" && topic[1]== "${state.hubName}"){ //local - look for incoming 'set' commands on Hubitat topic that control Hubitat devices here	
+		if (topic[4]=="set") {
+				 def evt12 = createEvent(name: "Command", value: topic[2], data: [state: payload[0], payload: payload, cmd: topic[3], topic: alphaV1parseMqttMessage(description)], isStateChange: true)
+				 pause (state.delay) // pace
+			log ("Received this " + payload + "  " + payload.size(), "TRACE")
+				 return evt12					
+				}
+				else {
+					log ("Received unexpected message from homie " + topic + " " + payload, "WARN")
+				}
+			}// not Hubitat local control
+
+	
+	
+	
+	
+	
+	
+	
 	else if (topic[0]=="homie" && topic[1]== "${state.normHubName}"){ //local - look for incoming 'set' commands that control Hubitat devices here	
 		if (topic[4]=="set") {
-				 def evt12 = createEvent(name: "Command", value: topic[2], data: [state: payload[0], payload: payload, cmd: topic[3]], isStateChange: true)
+				 def evt12 = createEvent(name: "Command", value: topic[2], data: [state: payload[0], payload: payload, cmd: topic[3],topic: alphaV1parseMqttMessage(description)], isStateChange: true)
 				 pause (state.delay) // pace
 			log ("Received this " + payload + "  " + payload.size(), "TRACE")
 				 return evt12					
@@ -322,7 +341,7 @@ def parse(String description) {
 	} // end remote homie
 
 	else {  // unhandled parse messages arrive here
-		log ("ad hoc MQTT parse  alphaV1parseMqttMessage(description).topic       ${payload[0]}", "DEBUG")
+		log ("ad hoc MQTT parse  ${alphaV1parseMqttMessage(description).topic}       ${payload[0]}", "DEBUG")
 		sendEvent (name: "Lookup", value: payload[0], data: [topic: alphaV1parseMqttMessage(description).topic], isStateChange: true) 
 
 	}
@@ -340,7 +359,7 @@ def reset()
 		initialize()
 	}
 	
-def setStateVar(var,value)
+def setStateVar(var,value,value2=null)
 	{
 	if (var == "logLevel"){
 		state.logLevel = value.toInteger()
@@ -356,7 +375,8 @@ def setStateVar(var,value)
 	}
 	else if (var == "normHubName") {
 		state.normHubName = value
-		log ("Normalised hub name is " + value,"INFO")	
+		state.hubName=value2
+		log ("Normalised ${state.hubName} hub name is ${state.normHubName}","INFO")	
 	}
 }
 
