@@ -45,7 +45,7 @@ preferences {  // can't use atomicState vars in this section
 				input "dimmers", "capability.switchLevel", multiple: true, required: false, title: "<b>Dimmers</b>", submitOnChange: true
 				input "sensors", "capability.sensor", title: "<b>Sensors (all types)</b>", multiple: true, required: false
 				input "colour", "capability.colorControl",multiple: true, required: false, title: "<b>Colour control light devices</b>", submitOnChange: false
-				// input "colourT", "capability.colorTemperature",multiple: true, required: false, title: "<b>Colour temperature light devices</b>", submitOnChange: false
+				input "colourT", "capability.colorTemperature",multiple: true, required: false, title: "<b>Colour temperature light devices</b>", submitOnChange: false
 				// TODO removed above as it was duplicating colour bulbs - need to research differences to colorControl better
 				// these are needed if users want to select individual capabilities/attributes 
 				// lots to add
@@ -187,12 +187,12 @@ def uninstalled() {
 
 def initialize()
 {
-	log.info "${app.name} pre6 alpha3 Initialized"
+	log.info "${app.name} pre7 alpha3 Initialized"
 	//def hub = location.hubs[0]
 	atomicState.normHubName = normalize(settings?.hubName)
 	log ("Hubitat hub name is : " + settings?.hubName,"INFO")
 	mqtt.reset()
-	mqtt.setStateVar("normHubName",normalize(settings?.hubName))  // pass normalized name to MQTT client
+	mqtt.setStateVar("normHubName",normalize(settings?.hubName),hubName)  // pass normalized name to MQTT client
 	if (settings?.HAStatestream) mqtt.setStateVar ("HAStatestreamTopic",settings?.HAStatestreamTopic)
 	if (settings?.HADiscovery) {
 		// TODO ensure homie publish or other adequate topic structure is enabled
@@ -499,7 +499,7 @@ MQTTRGB = (settings?.colour)
 			//colourDevices(null, item, "saturation", MQTTRGB.currentSaturation[0])
 			//colourDevices(null, item, "level", MQTTRGB.currentLevel[0])  // TODO do we need this
 			hsv=[MQTTRGB.currentHue[0], MQTTRGB.currentSaturation[0], MQTTRGB.currentLevel[0]]
-			colourDevices(null, item, "HSV", hsv)
+			colourDevices(null, item, "hsv", hsv)
 
 		}
 	}
@@ -742,13 +742,10 @@ def HADiscoveryAdvertise (name, type="none", category="none", payON="true",payOF
 				pOFF = ""
 			}
 */
-			//payload='{'+pName+pUID+pDevClass+pState+pUOM+pON+pOFF+pIcon+pDev+pValTemp+'}'    
+			if (type=="sensor") pUOM=',"unit_of_measurement": "'+UOM+'"'
+			payload='{'+pName+pUID+pDevClass+pState+pUOM+pON+pOFF+pIcon+pDev+pValTemp+'}'    
 		}
-		if (type=="sensor") {
-			//  TODO need to add UOM here for display in HA
-			pUOM=',"unit_of_measurement": "'+UOM+'"'						
-		}
-		payload='{'+pName+pUID+pDevClass+pState+pUOM+pON+pOFF+pIcon+pDev+pValTemp+'}'  
+ 
 		//if (!atomicState.started) //TODO BUG Can't limit this here as these happen adhoc after startup unless can force early state synch on startup
 		// will see what results if we repeatedly send them - maybe OK as send only
 		// Was OK for sensors but RGB bulbs wont be - got mismatch of level/state - will need to send just once so need state synch
@@ -1183,7 +1180,7 @@ def colourDevices(evt, name=null,type=null, state=null) {
 	normxName = normalize(xName) 
 	if (atomicState.lastDevice==name) log ("Colour ${name} name match with previous ${xName}","DEBUG")
 	if (settings?.HEBasic) {
-		mqtt.publishMsg ("Hubitat/${settings?.hubName}/${name}/${xType}","${state.toString()}")
+		mqtt.publishMsg ("Hubitat/${settings?.hubName}/${name}/${xType}","${state.toString()}")  // TODO This is generalised needs tweaking
 	}
 	if (settings?.homiePublish) {  //TODO case rather than if
 		sTopic="homie/${atomicState.normHubName}/${normName}"
@@ -1202,8 +1199,8 @@ def colourDevices(evt, name=null,type=null, state=null) {
 			if (xType=='colorTemperature'){
 				category='color-temperature'
 				mqtt.publishMsg (sTopic+'/'+category+'/$datatype',"integer",1,true)
-				mqtt.publishMsg (sTopic+'/'+category+'/$unit','K',1,true)
-				mqtt.publishMsg (sTopic+'/'+category+'/$format','0:9999',1,true)
+				mqtt.publishMsg (sTopic+'/'+category+'/$unit','~',1,true)
+				mqtt.publishMsg (sTopic+'/'+category+'/$format','200:700',1,true)
 				mqtt.publishMsg (sTopic+'/'+category+'/$settable','true',1,true)	
 				//UOM="%"
 				HAtype="RGB"
@@ -1238,7 +1235,7 @@ def colourDevices(evt, name=null,type=null, state=null) {
 				mqtt.publishMsg (sTopic+'/'+category+'/$format','hsv',1,true)
 				mqtt.publishMsg (sTopic+'/'+category+'/$settable','true',1,true)
 				mqtt.publishMsg (sTopic+'/'+category+'/v',state.toString(),1,settings?.homieStatesPersist)  // TODO Check is this right
-				mqtt.publishMsg (sTopic+'/'+category+'-temperature/temp',state.toString(),1,settings?.homieStatesPersist) 
+				//mqtt.publishMsg (sTopic+'/'+category+'-temperature/temp',state.toString(),1,settings?.homieStatesPersist) 
 				atomicState.lev = state + '#' + name
 				category='dim'
 				mqtt.publishMsg (sTopic+'/'+category+'/$datatype',"integer",1,true)
@@ -1259,7 +1256,7 @@ def colourDevices(evt, name=null,type=null, state=null) {
 				//UOM="%"
 				HAtype="RGB"
 			}
-		else if (xType=="HSV") {
+		else if (xType=="hsv") {
 				category='color'
 			
 				mqtt.publishMsg (sTopic+'/'+category+'/$datatype',"color",1,true)
@@ -1281,7 +1278,6 @@ def colourDevices(evt, name=null,type=null, state=null) {
 			
 			
 			else if (xType=='onoff'){   // Dont think this happens  - this topic created by the 'switched' event
-				//log.error "Yes it does with state ${state}"
 				category='ONOFF'
 				mqtt.publishMsg (sTopic+'/'+category+'/$datatype','boolean',1,true)
 				//mqtt.publishMsg (sTopic+'/'+category+'/$unit','?',1,true)
@@ -1291,7 +1287,6 @@ def colourDevices(evt, name=null,type=null, state=null) {
 				HAtype="RGB"
 			}
 			else if (xType=='switch'){   // hope this doesnt conflict with switchedDim - ot is called
-				//log.error "Yes this does too with state ${state}"
 				category='onoff'
 				mqtt.publishMsg (sTopic+'/'+category+'/$datatype','boolean',1,true)
 				mqtt.publishMsg (sTopic+'/'+category+'/$settable','true',1,true)	
@@ -1302,26 +1297,27 @@ def colourDevices(evt, name=null,type=null, state=null) {
 		
 		if (category=="unknown") log ("Need to handle ${xType} in RGB colour", "WARN")
 		
-		if (xType=="RGB"||xType=="RGBT") category='color' // this is a temporary kludge TODO better
+		if (xType=="RGB"||xType=="RGBT")
+		{
+			category='color' // this is a temporary kludge TODO better
+			log ("Ignoring ${xTYPE} for  ${name.toString()} value ${state.toString()}","WARN")
+			return  // This is overwriting color attribute with #FFFFFF as currentColor() returns that so dont action
+		}
 		log ("Handling an ${xType} event - for ${name.toString()}", "WARN")
 		
-	return  // This is overwriting color attribute with #FFFFFF as currentColor() returns that so dont action
+
 			mqtt.publishMsg (sTopic+'/$properties',category,1,true)   // limited homie implementation
 			mqtt.publishMsg (sTopic+'/$name',name.toString(),1,true)   
 			mqtt.publishMsg (sTopic+'/$type',"RGBT light",1,true)   
 			mqtt.publishMsg (sTopic+'/'+category+'/$name',name.toString(),1,true)  
 			mqtt.publishMsg (sTopic+'/'+category+'/$retained',(settings?.homieStatesPersist).toString(),1,true)
-		
-		
 			if (state=="on") state = "true" 
 			else if (state=='off') state = "false"  // TODO customisable
-		
 			mqtt.publishMsg (sTopic+'/'+category,state.toString(),1,settings?.homieStatesPersist)
-		
 		//	mqtt.publishMsg (sTopic+'/color/r',255,1,settings?.homieStatesPersist)  /? TODO What is this for ? Red ? but no g or b ??
 		
-		//{"h":216,"s":100,"v":67}
-	//TODO BUG refine this by checking name
+			//{"h":216,"s":100,"v":67}
+	//TODO BUG refine this by checking name matches (if use this)
 	//	mqtt.publishMsg (sTopic+'/color',"${extractInt(atomicState.hue)},${extractInt(atomicState.sat)},${extractInt(atomicState.lev)}",1,settings?.homieStatesPersist)
 	    mqtt.publishMsg (sTopic+'/color/$format','hsv',1,true)
 	//	mqtt.publishMsg (sTopic+'/color/hsv','{"h":'+extractInt(atomicState.hue)+',"s":'+extractInt(atomicState.sat)+',"v":'+extractInt(atomicState.lev)+'}',1,settings?.homieStatesPersist)
@@ -1928,13 +1924,18 @@ def sensorUOM(evt) {  // TODO unused in alpha2
 def cmdEvent (evt) {  // 'set' command from homie for a Hubitat or manual device via Hubitat basic 
 	// TODO This has value and data transposed in the two versions for discovered and adhoc .. tidy up
 	def data = parseJson(evt.data)
-	log ("MQTT set command received for " + evt.value + " " + data.cmd + " " + data.state,"DEBUG")
+	log ("MQTT set command received for " + evt.value + " " + data.cmd + " " + data.state,"INFO")
 	normName=evt.value
-	if (data.cmd=="onoff") {  // TODO convert to select / case
+	if (atomicState.nameMap[normName]==null){
+		log ("No name map for ${normName} so assume Hubitat basic topic", "INFO") // could check from data.topic.topic[0]
+		matchName=normName
+			 }
+		else matchName=atomicState.nameMap[normName]	
+	if (data.cmd=="onoff" || data.cmd=="switch") {  // TODO convert to select / case   'switch' comes from RGB devices
 		MQTTswitches = (settings?.switches)
-    	log ("Switch Lookup for  "+  evt.value + " is " + atomicState.nameMap[normName] + " [" + atomicState.nameMap[index] +"] ","TRACE")		
+		log ("Switch Lookup for  "+  evt.value + " is " + matchName + " [" + atomicState.nameMap[index] +"] ","TRACE")
 		MQTTswitches.each { MQTTswitches ->  // This is awful - looping through - do it the other way		
-			if (MQTTswitches.displayName==atomicState.nameMap[normName]){			
+			if (MQTTswitches.displayName==matchName){	
 				// DUPLICATED TODO combine this as one method for all
 				log ("Surmising required state [" +data.state+"] for " + evt.value,"DEBUG")
 				OnValues="on,true,yes,1"  
@@ -1956,9 +1957,9 @@ def cmdEvent (evt) {  // 'set' command from homie for a Hubitat or manual device
 		}	
 					
 		MQTTdimmers = (settings?.dimmers)
-    	//log ("Dimmer Lookup for  "+  evt.value + " is " + atomicState.nameMap[normName] + " [" + atomicState.nameMap[index] +"] ","TRACE")
+		log ("Dimmer Lookup for  "+  evt.value + " is " + matchName + " [" + atomicState.nameMap[index] +"] ","TRACE")
 		MQTTdimmers.each { MQTTdimmers ->  // This is awful - looping through - do it the other way
-		if (MQTTdimmers.displayName==atomicState.nameMap[normName]){
+			if (MQTTdimmers.displayName==matchName){
 			// TODO combine this below as one method for all
 				log ("Surmising required state [" +data.state+"] for " + evt.value,"DEBUG")
 				OnValues="on,true,yes,1"  
@@ -1981,9 +1982,9 @@ def cmdEvent (evt) {  // 'set' command from homie for a Hubitat or manual device
 		
 		
 		MQTTRGB = (settings?.colour)
-    	//log ("ColourC Lookup for  "+  evt.value + " is " + atomicState.nameMap[normName] + " [" + atomicState.nameMap[index] +"] ","TRACE")
+		// log ("ColourC Lookup for  "+  evt.value + " is " + matchName + " [" + atomicState.nameMap[index] +"] ","TRACE")
 		MQTTRGB.each { MQTTRGB ->  // This is awful - looping through - do it the other way
-		if (MQTTRGB.displayName==atomicState.nameMap[normName]){
+		if (MQTTRGB.displayName==matchName){
 			// TODO combine this below as one method for all
 				log ("Surmising required state [" +data.state+"] for " + evt.value,"DEBUG")
 				OnValues="on,true,yes,1"  
@@ -2005,9 +2006,9 @@ def cmdEvent (evt) {  // 'set' command from homie for a Hubitat or manual device
 		}
 /* TODO Think this can be ignore FTTB as it is a near duplicate in terms of lookup	
 		MQTTRGB = (settings?.colourT)
-    	//log ("ColourT Lookup for  "+  evt.value + " is " + atomicState.nameMap[normName] + " [" + atomicState.nameMap[index] +"] ","TRACE")
+    	//log ("ColourT Lookup for  "+  evt.value + " is " + matchName + " [" + atomicState.nameMap[index] +"] ","TRACE")
 		MQTTRGB.each { MQTTRGB ->  // This is awful - looping through - do it the other way
-		if (MQTTRGB.displayName==atomicState.nameMap[normName]){
+		if (MQTTRGB.displayName==matchName){
 			// TODO combine this below as one method for all
 				log ("Surmising required state [" +data.state+"] for " + evt.value,"DEBUG")
 				OnValues="on,true,yes,1"  
@@ -2027,30 +2028,31 @@ def cmdEvent (evt) {  // 'set' command from homie for a Hubitat or manual device
 				else log ("Unknown state value " + data.state +" - need to add to lookup","WARN")
 			}
 		}
-	*/
-		
+	*/		
 	}
+	
 	else if (data.cmd=="dim") {
 		intLevel=data.state.toInteger()
 		if ((0 <= intLevel) && (intLevel <= 100))
 		{
-			//log ("Dimmer Lookup for  "+  evt.value + " is " + atomicState.nameMap[normName] + " [" + atomicState.nameMap[index] +"] ","TRACE")
+			
+			//log ("Dimmer Lookup for  "+  evt.value + " is " + matchName + " [" + atomicState.nameMap[index] +"] ","TRACE")
 			MQTTdimmers = (settings?.dimmers)
 			MQTTdimmers.each { MQTTdimmers ->  // This is awful - looping through - do it the other way
-				if (MQTTdimmers.displayName==atomicState.nameMap[normName]){
+				if (MQTTdimmers.displayName==matchName){
 					log ("Found " + MQTTdimmers.displayName, "TRACE")
 					MQTTdimmers.setLevel(intLevel,1)
 				}
 			}
 			adhoc=(settings?.adhoc) 
 			adhoc.each { adhoc ->
-				if (adhoc.displayName==atomicState.nameMap[normName]){ 
+				if (adhoc.displayName==matchName){ 
 				adhoc.setLevel(intLevel,1)
 				}
 			}
 			MQTTRGB = (settings?.colour)
 			MQTTRGB.each { MQTTRGB ->
-				if (MQTTRGB.displayName==atomicState.nameMap[normName]){
+				if (MQTTRGB.displayName==matchName){
 					MQTTRGB.setLevel(intLevel,1)
 				}
 			}
@@ -2061,7 +2063,7 @@ def cmdEvent (evt) {  // 'set' command from homie for a Hubitat or manual device
 		
 			MQTTRGB = (settings?.colour)
 			MQTTRGB.each { MQTTRGB ->
-				if (MQTTRGB.displayName==atomicState.nameMap[normName]){ 
+				if (MQTTRGB.displayName==matchName){ 
 					float Rtemp= Float.parseFloat(data.state)/3.6
 					int hue = Math.round (Rtemp)  // 0-360
 					if (data.payload.size()>1) {
@@ -2076,15 +2078,62 @@ def cmdEvent (evt) {  // 'set' command from homie for a Hubitat or manual device
 		
 	}
 	
-	else if (data.cmd=="color-temperature") {
+		else if (data.cmd=="hsv") {
 			MQTTRGB = (settings?.colour)
 			MQTTRGB.each { MQTTRGB ->
-				if (MQTTRGB.displayName==atomicState.nameMap[normName]){
+				if (MQTTRGB.displayName==matchName){
+					// These all seem to be 0 to 100 
+					MQTTRGB.setSaturation(data.payload[1].toInteger())
+					MQTTRGB.setHue(data.payload[0].toInteger())
+					MQTTRGB.setLevel(data.payload[2].toInteger())
+				}
+			}
+	}
+	
+	else if (data.cmd=="hue") {
+			MQTTRGB = (settings?.colour)
+			MQTTRGB.each { MQTTRGB ->
+				if (MQTTRGB.displayName==matchName){
+					MQTTRGB.setHue(data.payload[0].toInteger())
+				}
+			}
+	}
+	else if (data.cmd=="level") {  // currently only searching colour bulbs for this as it's a RGB event
+			MQTTRGB = (settings?.colour)
+			MQTTRGB.each { MQTTRGB ->
+				if (MQTTRGB.displayName==matchName){
+					MQTTRGB.setLevel(data.payload[0].toInteger())
+				}
+			}
+	}
+		else if (data.cmd=="saturation") {
+			MQTTRGB = (settings?.colour)
+			MQTTRGB.each { MQTTRGB ->
+				if (MQTTRGB.displayName==matchName){
+					MQTTRGB.setSaturation(data.payload[0].toInteger())
+				}
+			}
+	}
+	
+	else if (data.cmd=="colorTemperature") { // This is from the Hubitat Basic topic
+			MQTTRGB = (settings?.colour)
+			MQTTRGB.each { MQTTRGB ->
+				if (MQTTRGB.displayName==matchName){
+					MQTTRGB.setColorTemperature (data.state.toInteger())	
+				}
+			}
+	}
+		else if (data.cmd=="color-temperature") {  // This is from the homie topic
+			MQTTRGB = (settings?.colour)
+			MQTTRGB.each { MQTTRGB ->
+				if (MQTTRGB.displayName==matchName){
+					// The control value needs to be between 0 (7000K) and 500 (2000)
+					// it is reported back as 2000-7000 though so in Hubitat basic should we support this ?? Both come in here via 'set' need to split
 					int colTemp= 7000 + ((int) data.state.toInteger()*-10)  // TODO pure guesswork here need to look up why 0-500 from HA
-					log ("Requested colour temperature of " + colTemp, "TRACE")
+					log ("Requested colour temperature of " + colTemp, "ERROR")
 					MQTTRGB.setColorTemperature (colTemp)
-					
-					
+					colTopic=data.topic.topic.substring(0, data.topic.topic.length() - 4)  // TODO KLUDGE for time being
+					mqtt.publishMsg (colTopic,data.state,1,settings?.homieStatesPersist)   // UGH setting reported value to set value
 				}
 			}
 	}
@@ -2340,7 +2389,7 @@ temperature
 						child.setMaxBrightness('255') 
 					}
 					if (type=='sensor') {
-						log.error "############ Problem child is " + child.device.typeName
+						log  ("############ Problem child is " + child.device.typeName, "ERROR")
 						if (child.typeName=="MQTT Dimmer" || child.typeName=="MQTT Switch" ){  // think must be my driver here
 						child.setValue ("")  //TODO no good if not my device driver
 					}
@@ -2425,6 +2474,7 @@ States before discovery
 Sensors check over  
 Ongoing .. customisation of topic names/states
 Review TODOs in code
+Color hsv not settable from Hubitat topic
 
 
 ISSUES:
