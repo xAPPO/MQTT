@@ -4,40 +4,41 @@ MQTT client for Hubitat
 
 ################     WORK IN PROGRESS  - AT ANY GIVEN TIME THIS MAY BE BROKEN - ################
 
-NB alpha2a is currently here - the development version will be version alpha3 and will be uploaded shortly
+NB alpha3 prerelease 7 is currently here
 
 NO SUPPORT ON THIS VERSION and do NOT discuss on the Hubitat community
 
-Release notes for pre alpha3  
-18th May 2019
+Release notes for pre7  alpha3  
+3rd June 2019
 
 
 # Features
 
-a) Enabling inbuilt HE devices*  to publish and be controllable through MQTT either using a basic topic structure or a limited homie3 structure (or both)
+a) Enabling inbuilt HE devices*  to publish and be controllable through MQTT either using a basic topic structure or a compliant homie3 structure (or both)
 
 b) Enable MQTT devices* to be 'mirrored'  as virtual devices and controlled within HE. All the topics are configurable as are the state values..
 
-c) Enable automatic discovery and selected inclusion of devices* using the homie3 protocol (promoted by openHAB)
+c) Enable automatic discovery and selected inclusion of devices* and sensors using the homie3 protocol (promoted by openHAB)
 
-d) Enable automatic discovery and selected inclusion of devices* using the Home Assistant statestream protocol (offered by HA) - a small  automation script is provided for HA that enables the statestream protocol for control > HA too.
+d) Enable automatic discovery and selected inclusion of devices* and sensors using the Home Assistant statestream protocol (offered by HA) - a small  automation script is provided for HA that enables the statestream protocol for control > HA too.
 
-e) Enable automatic discovery and selected inclusion of Hubitat devices* into Home Assistant using the HA MQTT Discovery protocol ( work in progress)
+e) Enable automatic discovery and selected inclusion of Hubitat devices* and sensors into Home Assistant using the HA MQTT Discovery protocol.
 
-*N.B.This version currently supports 'switch' (onoff) and 'switchLevel' (dim) capabilities only - but will be expanded to include others
+*N.B.This version currently supports 'switch' (onoff), 'switchLevel' (dim) colour and sensor capabilities only - but will be expanded to include others.  Sensors are still a work in progress.
 
 # Future Features:
 
-1) Support of many more device capabilities beyond 'onoff' and 'dim'
-2) Add sensor support for reporting of sensor values - (let me know which ones you use)
-3) Support Home Assistant MQTT discovery protocol bidirectionally - HE devices auto discovered by HA and devices advertising using this protocol discoverable by HE. (IN PROGRESS  HA Discovery partially implemented )
+1) Support of many more device capabilities beyond 'onoff' and 'dim' and 'color'
+2) Expand sensor support for better mapping of sensor data to devices.
+3) Support Home Assistant MQTT discovery protocol bidirectionally - HE devices auto discovered by HA and devices advertising using this protocol discoverable by HE. (may drop this latter support for HA Discovery > HE)
 4) Know Issue: currently,  at startup, HE devices do not publish their current state to MQTT. They do on change. [FIXED]
 5) Better support for decimal maxBrightness values
 6) Support for multiple homie discovered devices.
 7) Support for JSON payloads
 8) More complete support for homie3 specification from Hubitat - enough so openHAB# discovery is happy. [DONE]
+9) Support multiple MQTT brokers (considering)
 
-  #I have not yet tried openHAB homie3 discovery but I suspect it will not work currently.  You will need at least openHAB 2.5 milestone 1 build, maybe later, and for various stability reasons I can't recommend you upgrade to that - and definately not post milestone 1 builds.  Also I suspect I need to better support some topics in the homie3 specification ($nodes $type $properties and maybe more)
+  #I have not yet tried openHAB homie3 discovery but I suspect it will not work currently.  You will need at least openHAB 2.5 milestone 1 build, maybe later, and for various stability reasons I can't recommend you upgrade to that - and definately not post milestone 1 builds.  
 
 
 # Instructions: 
@@ -47,10 +48,10 @@ e) Enable automatic discovery and selected inclusion of Hubitat devices* into Ho
 
 1) Install both the main app MQTT and the device drivers for MQTT Client, MQTT Dimmer and MQTT Switch
 2) From 'Devices' "Add Virtual Device" selecting the "MQTT client" device driver, name the broker device as you wish, make up a Device Network ID e.g. the IP of the broker.
-3) Configure this device to access your existing MQTT broker using the 'Preferences' section on the next screen in the device driver then click 'Done'
+3) Configure this device to access your existing MQTT broker using the 'Preferences' section on the next screen in the device driver then click 'Done'.
 You must enter the IP (or URL) e.g. tcp://192.168.1.78:1883 ,  username / password are only required if your broker needs them.
-4) Launch the MQTT app, it has two setup pages , the first covering individual devices and the second for 'discovery'
-On the first page select from the 'MQTT Broker' dropdown the MQTT client device you just configured in step 3
+4) Launch the MQTT app, it has two setup pages each with multiple sections , the first page covers individual devices and the second for 'discovery'. The second page is optional.
+On the first page click 'Configuration' and from the 'MQTT Broker' dropdown select the MQTT client device you just configured in step 3
 For the time being ignore all other options and select 'Next' on the first page and 'Done' on the second 
 .. you should see something similar to this in the log.
 
@@ -63,14 +64,14 @@ Log:
 	info MQTT: Skipping HA stateStream MQTT discovery
 	info MQTT: Skipping homie MQTT discovery
 	info MQTT> Connected as Hubitat_Development to MQTT broker tcp://192.168.1.78:1883
-	info MQTT client alpha2 initialised
+	info MQTT client alpha3 initialised
 	info MQTT> Resetting MQTT connection
 	info MQTT> Log Level set to 2
 	info MQTT: Hubitat hub name is : Hubitat/Development
-	info MQTT alpha2 Initialized
+	info MQTT alpha3 Initialized
 	info MQTT: MQTT Installed
 	
-Inparticular check that you get the "Connected as Hubitat_xxxx to MQTT broker" success result, otherwise nothing will work.
+Inparticular check that you get the "Connected as Hubitat_xxxx to MQTT broker" success result and no other errors, otherwise nothing will work.
 
 Now choose from the key features listed above which feature(s) a) b) c) or d) you are trying to setup the MQTT app for.
 I recommend choosing just one for now.  a) is the easiest.
@@ -82,7 +83,7 @@ ________________________________________________________________________________
 # a) Enabling inbuilt 'real' HE devices*  to publish and be controllable through MQTT
  
  From 'Apps' run the MQTT app again and select the way (topic structure) that you would like to use to publish your devices to MQTT.
- You have two choices - a 'Hubitat basic MQTT' topic structure or a "homie3 protocol"  one.
+ You have two choices - a 'Hubitat basic MQTT' topic structure or a "homie3 protocol" compatible one.
  N.B. Before final release I may remove 'Hubitat Basic' as the 'homie3' topic structure is much the same
  
 Hubitat Basic:
@@ -99,6 +100,8 @@ homie3:
 	
 plus several required configuration topics
 
+When enabling the homie protocol there is an additional '..retain homie states' option. Enabling this causes the last reported state of your devices to be retained on your MQTT broker. Any new device device connecting to MQTT will receive these states , although these may be old (residual) values.  If you disable it any new device connecting to MQTT will get no information until your device updates its state, but the value will be known to be current. 
+
 Now enable which HE devices that you wish to publish to MQTT by selecting them in the two dropdowns
 
 HE Switch Devices > MQTT
@@ -114,7 +117,7 @@ ________________________________________________________________________________
 This requires you create virtual MQTT devices , currently two are provided "MQTT Switch" and "MQTT Dimmer".
 
 From 'Devices' select 'Add Virtual Device' and choose one of these 'user' devices and name it.
-I recommend prefixing the name with a special character e.g. ~ as this will allow them to group together and be easily identifiable when selecting them later.
+I recommend prefixing the name with a special character e.g. ~ as this will allow them to group together in lists and be easily identifiable when selecting them later.
 
 For the time being type in any random set of characters for the 'Device Network Id' - it will be renamed automatically later.
 
@@ -139,8 +142,8 @@ Level Topic is the topic on MQTT where the device reports its current level
 
 Level Command Topic is the topic you send a command to to make the device change level
 
-Maximum Brightness Level is the value of full brightness for this device e.g. 100 255 1.0 a decimal point is significant as it will 
-support real numbers rather than integers.
+Maximum Brightness Level is the value of full brightness for this device e.g. 100 255 1.0 a decimal point is significant as it will then
+use real numbers rather than integers.
 	N.B. Hubitat uses 0-100 for level internally so everything will get scaled accordingly
 	
 If your device does not offer some of these options you may leave them blank, however either 'State Topic' or 'Level Topic' is required as it is used to create the Device Network ID.
@@ -149,12 +152,12 @@ Once these parameters are entered click 'Save Preferences' followed by 'Save Dev
 
 Then you have to restart the MQTT app.
 
-   This next step is a bit of annoyance but currently necessary. From the 'MQTT Manual Devices' dropdown select the virtual MQTT device(s) that you have just added. 
+   This next additional step is a bit of annoyance but currently necessary. From the 'MQTT Manual Devices' dropdown select the virtual MQTT device(s) that you have just added. 
    
-   This dropdown also includes 'discovered' devices, you want to select just the virtual ones.  If you did prefix them with a special character e.g. ~ it will be much more obvious which these devices are.
+   This dropdown also includes 'discovered' devices, but you want to select just the virtual ones.  If you did prefix them with a special character when creating them e.g. ~  then it will be much more obvious which these devices are.
    
    Click through 'Next' 'Done'.
-   (I will look into eliminating this extra step)
+   (I will look into eliminating this additional step)
    
    
 The current values for the state will be updated and control should be available from HE
@@ -174,7 +177,7 @@ MQTT Discovery:
 The HA statestream protocol needs to know the name of the HA statestream topic that HA has been configured to publish on.
 Configure this using "HA Statestream topic"
 
-The homie 3 protocol needs to know which device within the homie topic tree to discover. Currently only one homie device can be discovered.
+The homie 3 protocol needs to know which device within the homie topic tree to discover. Currently only one homie 'device' can be discovered although it further exposes all of it's nodes.
 Configure this under "homie device topic name"
 
 e.g. if a homie topic looks like homie/mainsys/hallway/onoff then you would enter mainsys here as that is the device identifier (mainsys has sub nodes like hallway)
@@ -183,10 +186,10 @@ Both of these are configured on the second page of the app configuration (click 
 
 Click 'Done'
 
-The app will then start up which will take around a minute and automatically discover all the devices you have asked it too. 
+The app will then start up which will take a couple of minutes and automatically discover all the devices you have asked it too. 
 It will then populate the discovered device dropdown lists so you can later select which devices you are interested in.
 
-Now restart the app on the second page you will see four lists... choose the MQTT devices you wish to 'mirror' within Hubitat.
+Now restart the app,  on the second page you will see four lists... choose the MQTT devices you wish to 'mirror' within Hubitat.
 
 Discovered homie switches
 
@@ -206,7 +209,7 @@ Configure HA to use MQTT statestream by including the following in your configur
 
 	mqtt_statestream:
 
-  	  base_topic: HAStateStream50
+  	  base_topic: HAStateStream50             # << your choice of topic name
   
   	  publish_attributes: true
   
@@ -216,23 +219,24 @@ This enables bidirectional control via statestream
 __________________________________________________________________________________________________________________________
 
 __________________________________________________________________________________________________________________________
-# e) Enable automatic discovery by Home Assitant of Hubitat devices (switch and dim only currently)
+# e) Enable automatic discovery by Home Assitant of Hubitat devices (switch, dim, color, sensors currently)
 
 To enable the advertising of Hubitat devices for discovery by HA.
 
-First ensure HA has 'discovery' enabled i and note the topic that it is using (within the mqtt section of HA's configuration.yaml file).
-(You will need to restart HA if you edit configuration.yaml)
+First ensure HA has 'discovery' enabled and and note the topic that it is using (within the mqtt section of HA's configuration.yaml file).  You will need to restart HA if you edit configuration.yaml
 
 	discovery: true
 	discovery_prefix: homeassistant
   
-Under the MQTT Publish formats on the MQTT app first page
+Cick MQTT Publish Formats on the MQTT app first page
 Enable HA MQTT discovery protocol
-Enable homie 3 protocol on the MQTT app first page. (You must enable this as HA reads MQTT paylaods from the homie topic)
+Enable homie 3 protocol on the MQTT app first page. (You must enable this as HA reads MQTT payloads from these homie topics)
 In the HA Discovery Topic field enter the discovery_prefix value that HA is using (e.g. homeassistant if as above).
 Click through 'Next' Done' 
 
-Devices (onoff and dim only currently) that are enabled for MQTT within Hubitat will automatically just appear as 'switches' and 'lights' in your Home Assistant front end. You may to have press ctrl F5 to refresh the HA interface , and they may initially appear as 'unused entities' which you can check by clicking the 'hamburger' icon in the top right hand of recent HA builds.  These devices are bidirectionally realtime synched with Hubitat.  When HA starts up it checks MQTT for discovered devices. If you want them to persist over HA restarts then ensure you check the 'retain' checkbox under the 'HA Dsicovery Topic" name in the MQTT app. If it is unchecked then HA will purge these devices when restarted , although it might warn you with yellow boxes the first time it notices they have gone.
+Devices (onoff and dim only currently) that are enabled for MQTT within Hubitat will automatically just appear as 'switches' and 'lights' in your Home Assistant front end. You may to have press ctrl F5 to refresh the HA interface , and they may initially appear as 'unused entities' which you can check by clicking the 'hamburger' icon in the top right hand of recent HA builds.  These devices are bidirectionally realtime synched with Hubitat.  
+
+When HA starts up it checks MQTT for discovered devices. If you want them to persist over HA restarts then ensure you check the 'retain' checkbox under the 'HA Discovery Topic" name in the MQTT app. If it is unchecked then HA will purge these devices when restarted , although it might warn you with yellow boxes the first time it notices they have gone.
 
 __________________________________________________________________________________________________________________________
 
@@ -254,7 +258,7 @@ There are two other app configuration options to be aware of.
  
 # LogLevel:
 
-LogLevel can be set to limit the logging entries the app posts. It is recommended to set it at level 'INFO'
+LogLevel (within Configuration) can be set to limit the logging entries the app posts. It is recommended to set it at level 'INFO'
 but it can be minimised to "WARN".	Any log messages that show in red as 'ERROR' need investigation (and reporting)
  
 # Purge Discovered Devices
