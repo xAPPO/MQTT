@@ -31,10 +31,10 @@ preferences {  // can't use atomicState vars in this section
 				input name: "hubName",  type: "text", title: "<b>Hub Name</b>", description: "  choose a unique name for this Hubitat Hub", required: true, displayDuringSetup: true, submitOnChange: false
 				input "mqttRemoveDevices", "bool", title: "<b>Purge Discovered Devices</b><br> WARNING: Setting this will delete all your MQTT 'discovered devices' when you click 'Done'. However your selected devices in HA and homie discovery will be re-added automatically when app is run again but you will need to re-add them manually in your Dashboards. Your selected 'published' devices and any manually created devices will not be affected", required: true, defaultValue: false, submitOnChange: true
 				input "WipeDevices", "bool", title: "Forget enabled devices", submitOnChange: false
-				input "onoffMap" , "enum", title: "<b>/onoff/ topic is .. (not yet implemented)</b>", required: false, defaultValue: "onoff", options: ["onoff", "switch", "binary", "boolean", "state", "socket"]
-				input "dimMap" , "enum", title: "<b>/dim/ topic is .. (not yet implemented)</b>", required: false, defaultValue: "dim", options: ["dim", "level", "brightness", "light", "bulb"]
-				input "stateMap" , "enum", title: "<b>on : off default value is .. (not yet implemented)</b>", required: false, defaultValue: "true:false", options: ["true:false", "True:False", "TRUE:FALSE", "on:off", "On:Off", "ON:OFF", "yes:no", "Yes:No","YES:NO","1:0"]
-				input "cmdMap" , "enum", title: "<b>command default topic is .. (not yet implemented)</b>", required: false, defaultValue: "set", options: ["set", "cmd", "control"] //, "state"]
+				//input "onoffMap" , "enum", title: "<b>/onoff/ topic is .. (not yet implemented)</b>", required: false, defaultValue: "onoff", options: ["onoff", "switch", "binary", "boolean", "state", "socket"]
+				//input "dimMap" , "enum", title: "<b>/dim/ topic is .. (not yet implemented)</b>", required: false, defaultValue: "dim", options: ["dim", "level", "brightness", "light", "bulb"]
+				//input "stateMap" , "enum", title: "<b>on : off default value is .. (not yet implemented)</b>", required: false, defaultValue: "true:false", options: ["true:false", "True:False", "TRUE:FALSE", "on:off", "On:Off", "ON:OFF", "yes:no", "Yes:No","YES:NO","1:0"]
+				//input "cmdMap" , "enum", title: "<b>command default topic is .. (not yet implemented)</b>", required: false, defaultValue: "set", options: ["set", "cmd", "control"] //, "state"]
 				input "logging", "enum", title: "<b>Log Level</b>", required: false, defaultValue: "INFO", options: ["TRACE", "DEBUG", "INFO", "WARN", "ERROR", "DISABLED"]
 			}
 			section ("<B>Import these devices from MQTT<b>",hideable: true, hidden: true){
