@@ -1,3 +1,1020 @@
+/*
+
+  Copyright Kevin Hawkins 2019     apps@ukusa.co.uk
+
+  Logging code was adapted from Eric Vitale's ST LIFX application, with thanks.  Copyright 2016 ericvitale@gmail.com
+
+  Support via Hubitat community alpha thread   
+
+	- please do not hassle Hubitat with any support Q's as their client is an unsupported alpha release
+
+*/
+
+
+
+definition(
+	name: "MQTT",
+	namespace: "ukusa",
+	author: "Kevin Hawkins",
+	importUrl: "https://raw.githubusercontent.com/xAPPO/MQTT/development/MQTT%20app",
+	description: "Links MQTT with HE devices",
+	category: "Intranet Connectivity",
+	iconUrl: "https://s3.amazonaws.com/smartapp-icons/Convenience/App-BigButtonsAndSwitches.png",
+	iconX2Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/App-BigButtonsAndSwitches@2x.png",
+	iconX3Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/App-BigButtonsAndSwitches@2x.png"
+)
+
+preferences {  // can't use atomicState vars in this section
+		page(name: "Configuration", title: "<b><h2>MQTT</b></h2>", nextPage: "discovery", uninstall: false, hideable: true){  // bad tags but renders OK
+			section ("<b>Configuration</b>", hideable: true, hidden: true) {
+				input "mqtt", "device.MQTTClient", required: true, title: "<b>MQTT Broker</b>", submitOnChange: false
+				input name: "hubName",  type: "text", title: "<b>Hub Name</b>", description: "  choose a unique name for this Hubitat Hub", required: true, displayDuringSetup: true, submitOnChange: false
+				input "mqttRemoveDevices", "bool", title: "<b>Purge Discovered Devices</b><br> WARNING: Setting this will delete all your MQTT 'discovered devices' when you click 'Done'. However your selected devices in HA and homie discovery will be re-added automatically when app is run again but you will need to re-add them manually in your Dashboards. Your selected 'published' devices and any manually created devices will not be affected", required: true, defaultValue: false, submitOnChange: true
+				input "WipeDevices", "bool", title: "Forget enabled devices", submitOnChange: false
+				//input "onoffMap" , "enum", title: "<b>/onoff/ topic is .. (not yet implemented)</b>", required: false, defaultValue: "onoff", options: ["onoff", "switch", "binary", "boolean", "state", "socket"]
+				//input "dimMap" , "enum", title: "<b>/dim/ topic is .. (not yet implemented)</b>", required: false, defaultValue: "dim", options: ["dim", "level", "brightness", "light", "bulb"]
+				//input "stateMap" , "enum", title: "<b>on : off default value is .. (not yet implemented)</b>", required: false, defaultValue: "true:false", options: ["true:false", "True:False", "TRUE:FALSE", "on:off", "On:Off", "ON:OFF", "yes:no", "Yes:No","YES:NO","1:0"]
+				//input "cmdMap" , "enum", title: "<b>command default topic is .. (not yet implemented)</b>", required: false, defaultValue: "set", options: ["set", "cmd", "control"] //, "state"]
+				input "logging", "enum", title: "<b>Log Level</b>", required: false, defaultValue: "INFO", options: ["TRACE", "DEBUG", "INFO", "WARN", "ERROR", "DISABLED"]
+			}
+			section ("<B>Import these devices from MQTT<b>",hideable: true, hidden: true){
+				input "adhoc", "capability.telnet", multiple: true, required: false, title: "<b>MQTT virtual devices</b>", submitOnChange: false
+			}
+			section ("<b>Publish these devices to MQTT</b>", hideable: true, hidden: true) {
+				input "switches", "capability.switch", multiple: true, required: false, title: "<b>Switches</b>", submitOnChange: false
+				input "dimmers", "capability.switchLevel", multiple: true, required: false, title: "<b>Dimmers</b>", submitOnChange: true
+				input "sensors", "capability.sensor", title: "<b>Sensors (all types)</b>", multiple: true, required: false
+				input "colour", "capability.colorControl",multiple: true, required: false, title: "<b>Colour control light devices</b>", submitOnChange: false
+				input "colourT", "capability.colorTemperature",multiple: true, required: false, title: "<b>Colour temperature light devices</b>", submitOnChange: false
+				// TODO removed above as it was duplicating colour bulbs - need to research differences to colorControl better
+				// these are needed if users want to select individual capabilities/attributes 
+				// lots to add
+				input "tempsensors", "capability.temperatureMeasurement", multiple: true, required: false, title: "<b>Temperature sensors</b>", submitOnChange: false
+				input "motionsensors", "capability.motionSensor", multiple: true, required: false, title: "<b>Motion sensors</b>", submitOnChange: false
+				input "batterysensors", "capability.battery", multiple: true, required: false, title: "<b>Battery sensors</b>", submitOnChange: false
+				input "humiditysensors", "capability.relativeHumidityMeasurement", multiple: true, required: false, title: "<b>Humidity sensors</b>", submitOnChange: false
+				input "voltagesensors", "capability.voltageMeasurement", multiple: true, required: false, title: "<b>Voltage sensors</b>", submitOnChange: false
+				input "contactsensors", "capability.contactSensor", multiple: true, required: false, title: "<b>Contact sensors</b>", submitOnChange: false
+				input "thermostats", "capability.thermostat", multiple: true, required: false, title: "<b>Thermostats</b>", submitOnChange: false
+				input "smokesensors", "capability.smokeDetector", multiple: true, required: false, title: "<b>Smoke detectors</b>", submitOnChange: false
+				//TODO add remaining sensors types
+				//TODO Thermostats need attention for control to work
+			}				
+			section ("<b>MQTT Publish Formats</b>", hideable: true, hidden: true){
+				input "HEBasic", "bool", title: "<b>Hubitat basic MQTT</b>", required: true, defaultValue: false, submitOnChange: false 
+				input "homiePublish", "bool", title: "<b>homie 3 protocol</b>", required: true, defaultValue: false, submitOnChange: false
+				input "homieStatesPersist","bool",title: "<b>&nbsp&nbsp&nbsp&nbsp... retain homie states</b>", required: false, defaultValue: true, submitOnChange: false
+				input "HADiscovery", "bool", title: "<b>Home Assistant MQTT discovery protocol (requires homie3 publish enabled)</b>", required: true, defaultValue: false, submitOnChange: false 	
+				input name: "HADiscoveryTopic",  type: "text", title: "<b>Home Assistant Discovery Topic</b>", description: "  as configured in HA", required: false, displayDuringSetup: true, submitOnChange: false
+				input "HARemember", "enum", title: "<b>Home Assistant MQTT discovered devices</b>", required: false, defaultValue: "Forget",options: ["Forget", "Remember"], submitOnChange: false
+			}
+		}
+	}
+	page(name: "discovery", title: "Select MQTT discovered devices", install: true, uninstall: true)
+	
+def discovery() {  // can use atomicState vars in this section
+    dynamicPage(name: "discovery", title: "", install: true, nextPage:"hrefPage", uninstall: false) { 
+	section ("<h2><b>MQTT Discovery Protocols > HE </b></h2>(optional)"){
+		if (settings?.homieDiscovery && settings?.homieDevice!=null) homieEnabled='<font color="green">' else homieEnabled='<font color="darkred">'
+		if (settings?.HAStatestream && settings?.HAStatestreamTopic!=null)  HAEnabled='<font color="green">' else HAEnabled='<font color="darkred">'
+	}
+
+	// check variables for initialization & initialize if needed
+	atomicState.onoffDevices = (atomicState.onoffDevices != null)?atomicState.onoffDevices:[]
+	atomicState.dimDevices = (atomicState.dimDevices != null)?atomicState.dimDevices:[]
+	atomicState.sensorDevices = (atomicState.sensorDevices != null)?atomicState.sensorDevices:[]
+	atomicState.HASwitchDevices = (atomicState.HASwitchDevices != null)?atomicState.HASwitchDevices:[]
+	atomicState.HALightDevices = (atomicState.HALightDevices != null)?atomicState.HALightDevices:[]
+	atomicState.HASensorDevices = (atomicState.HASensorDevices != null)?atomicState.HASensorDevices:[]
+	atomicState.HABinarySensorDevices = (atomicState.HABinarySensorDevices != null)?atomicState.HABinarySensorDevices:[]
+	atomicState.HAGroupDevices = (atomicState.HAGroupDevices != null)?atomicState.HAGroupDevices:[]
+	atomicState.HAInputBooleanDevices = (atomicState.HAInputBooleanDevices != null)?atomicState.HAInputBooleanDevices:[]
+		numText=''
+		def numDevs=0
+		if (atomicState.onoffDevices != null) numDevs+= atomicState.onoffDevices.size()
+		if (atomicState.dimDevices != null) numDevs+= atomicState.dimDevices.size()
+		if (atomicState.sensorDevices != null) numDevs+= atomicState.sensorDevices.size()
+		def numEnabled=0
+		if (Homie_onoff!=null) numEnabled += settings?.Homie_onoff.size()
+		if (Homie_dim!=null) numEnabled += settings?.Homie_dim.size()
+		if (Homie_sensors!=null) numEnabled += settings?.Homie_sensors.size()
+		if (settings?.homieDiscovery){
+			if (atomicState.started) numText = "${numEnabled} of ${numDevs} enabled"
+			else numText="checking"
+		}
+		else {
+			numText="disabled"
+		}		
+		section (homieEnabled+"<b>homie</b>    [${numText}]</font>", hideable: true, hidden: true){
+		input "homieDiscovery", "bool", title: "<b>homie 3 protocol<b>", required: true, defaultValue: false, submitOnChange: false
+		input name: "homieDevice", type: "text", title: "<b>homie device topic name</b>", description: "... to import devices from", required: false, displayDuringSetup: false
+		input "Homie_onoff", "enum", multiple: true, title: "<b>Discovered ${atomicState.onoffDevices.size()} homie switches</b>", options: atomicState.onoffDevices.sort()
+		input "Homie_dim", "enum", multiple: true, title: "<b>Discovered ${atomicState.dimDevices.size()} homie dimmers</b>", options: atomicState.dimDevices.sort()
+		input "Homie_sensor", "enum", multiple: true, title: "<b>Discovered ${atomicState.sensorDevices.size()} homie sensors with ${0} enabled</b>", options: atomicState.sensorDevices.sort()
+		}
+		
+	section {}
+		
+		numText=''
+		numEnabled=0
+		// TODO - below line can still error initially ....
+		numDevs = atomicState.HASwitchDevices.size() + atomicState.HALightDevices.size()+atomicState.HASensorDevices.size()+atomicState.HABinarySensorDevices.size()+atomicState.HAGroupDevices.size()+atomicState.HAInputBooleanDevices.size()
+		if (HA_Switches!=null) numEnabled = settings?.HA_Switches.size()
+		if (HA_Lights!=null) numEnabled += settings?.HA_Lights.size()
+		if (HA_Sensors!=null) numEnabled += settings?.HA_Sensors.size()
+		if (HA_BinarySensors!=null) numEnabled += settings?.HA_BinarySensors.size()
+		if (HA_Groups!=null) numEnabled += settings?.HA_Groups.size()
+		if (HA_InputBooleans!=null) numEnabled += settings?.HA_Groups.size()
+		if (numEnabled>=0) numText = "${numEnabled} of ${numDevs} enabled"
+		if (settings?.HAStatestream){
+		if (atomicState.started) numText = "${numEnabled} of ${numDevs} enabled"
+			else numText="checking"
+		}
+		else {
+			numText="disabled"
+		}
+		section (HAEnabled+"<b>Home Assistant</b>    [${numText}]</font>", hideable: true, hidden: true) {
+			if (settings?.HA_Switches != null) HAsw = settings?.HA_Switches.size() else HAsw=0  // Elvis isnt in the house TODO
+			if (settings?.HA_Lights != null) HAli = settings?.HA_Lights.size() else HAli=0
+			if (settings?.HA_Sensors != null) HAse = settings?.HA_Sensors.size() else HAse=0
+			if (settings?.HA_BinarySensors != null) HAbs = settings?.HA_BinarySensors.size() else HAbs=0
+			if (settings?.HA_Groups != null) HAg = settings?.HA_Groups.size() else HAg=0
+			if (settings?.HA_InputBooleans != null) HAib = settings?.HA_InputBooleans.size() else HAib=0
+		input "HAStatestream", "bool", title: "Home Assistant statestream", required: true, defaultValue: false, submitOnChange: true 
+		input name: "HAStatestreamTopic", type: "text", title: "Home Assistant Statestream topic", description: "", required: false, displayDuringSetup: false
+		input "HA_Switches", "enum", multiple: true, title: "Discovered  ${atomicState.HASwitchDevices.size()} Home Assistant switches &nbsp &nbsp &nbsp [^${HAsw}]", options: atomicState.HASwitchDevices.sort()
+		input "HA_Lights", "enum", multiple: true, title: "Discovered ${atomicState.HALightDevices.size()} Home Assistant lights &nbsp &nbsp &nbsp [^${HAli}]" , options: atomicState.HALightDevices.sort()
+		input "HA_Sensors", "enum", multiple: true, title: "Discovered ${atomicState.HASensorDevices.size()} Home Assistant sensors &nbsp &nbsp &nbsp [^${HAse}]" , options: atomicState.HASensorDevices.sort()
+		input "HA_BinarySensors", "enum", multiple: true, title: "Discovered ${atomicState.HABinarySensorDevices.size()} Home Assistant binary sensors &nbsp &nbsp &nbsp [^${HAbs}]" , options:  atomicState.HABinarySensorDevices.sort()
+		input "HA_Groups", "enum", multiple: true, title: "Discovered ${atomicState.HAGroupDevices.size()} Home Assistant groups &nbsp &nbsp &nbsp [^${HAg}]" , options: atomicState.HAGroupDevices.sort()
+		input "HA_InputBooleans", "enum", multiple: true, title: "Discovered ${atomicState.HAInputBooleanDevices.size()} Home Assistant input booleans &nbsp &nbsp &nbsp [^${HAib}]" , options:  atomicState.HAInputBooleanDevices.sort()
+		}
+	}
+}
+
+def installed()
+{
+	log ( "${app.name} Installed","INFO")
+	atomicState.onoffDevices=[] 
+	atomicState.dimDevices=[]
+	atomicState.sensorDevices=[]
+	atomicState.HASwitchDevices=[]
+	atomicState.HALightDevices=[]
+	atomicState.HASensorDevices=[]
+	atomicState.HABinarySensorDevices=[]
+	atomicState.HAInputBooleanDevices=[]
+	atomicState.HAGroupDevices=[]
+	atomicState.topicMap=[:]
+	atomicState.nameMap=[:]
+	wipe() // also initialises 
+	initialize()
+}
+
+def updated()
+{
+	log ("${app.name} Updated", "INFO")
+	unsubscribe()
+    atomicState.count=0
+	unschedule()
+	initialize()
+}
+
+def uninstalled() {
+    log ("Deleting all child devices", "WARN")
+    wipe()
+	removeAllChildDevices()
+}	
+
+def initialize()
+{
+	log.info "${app.name} alpha3a  Initialized"
+	//def hub = location.hubs[0]
+	atomicState.normHubName = normalize(settings?.hubName)
+	log ("Hubitat hub name is : " + settings?.hubName,"INFO")
+	mqtt.reset()
+	mqtt.setStateVar("normHubName",normalize(settings?.hubName),hubName)  // pass normalized name to MQTT client
+	if (settings?.HAStatestream) mqtt.setStateVar ("HAStatestreamTopic",settings?.HAStatestreamTopic)
+	if (settings?.HADiscovery) {
+		// TODO ensure homie publish or other adequate topic structure is enabled
+		if (!settings?.homiePublish) log ("You must enable homie3 publish too for HA Discovery to work correctly","ERROR")
+		settings?.homiePublish=true    // TODO doesn't work !  settings are r/o - need to use an atomicState var
+		mqtt.subscribeTopic(atomicState.HA+'/status')
+	}
+	log("Initializing...", "DEBUG")
+	
+	//prepare for supporting personal preferences
+	// maybe via command() rather than in UI ? use atomicState rather than settings?
+	// this will proliferate MQTT variances :-(
+	/*
+	atomicState.cmd = "set" // cmd command control custom
+	atomicState.onoff = "onoff" // light switch binary boolean state
+	atomicState.dim = "dim" // level dimmer brightness
+	atomicState.boolean = "true" // True TRUE yes 1 On ON on
+	*/
+	
+	atomicState.started=false
+	if (settings?.homiePublish)
+	{
+		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$state','init',1,true)
+		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$homie','3.0.1',1,true) 
+		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$implementation','groovy:uk.co.ukusa.mqtt',1,true)
+		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$fw/version','3a',1,true)
+		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$fw/name','alpha',1,true)
+		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$name',settings?.hubName,1,true)
+		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$mac','BB:AA:DD:AA:55:55',1,true)
+		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$localip','1.2.3.4',1,true)
+		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$fw/name','alpha',1,true)
+		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$implementation/version','alpha3a',1,true)
+	}
+	mqtt.setStateVar("logLevel",determineLogLevel(settings?.logging ?: "INFO"))
+	if ((settings?.mqttRemoveDevices == true))
+	{
+		log ("Deleting all the MQTT child devices", "DEBUG")
+		removeAllChildDevices()  // somehow these stay orphaned, so need this or need to create differently
+		// wipe() // This loses you previously enabled devices but if already enabled it also stops them being added again
+	}
+	if (settings?.WipeDevices == true) {
+		wipe()
+	}
+	atomicState.homie=settings?.homieDevice  // setting the homie tree master device topic for discovery
+	atomicState.HA=settings?.HAStatestreamTopic
+	subscribe(switches, "switch", switched)
+	subscribe(dimmers, "level", dimmed)
+	subscribe(dimmers, "switch", switchedDim)
+	//subscribe(colour, "color", colourDevices)
+	
+	subscribe(mqtt,"HASynch", synchDevices)
+	subscribe(mqtt,"OnOffDev", onoffCapability)
+	subscribe(mqtt,"DimDev", dimCapability)
+	subscribe(mqtt,"SensorDev", sensorCapability)
+	subscribe(mqtt,"LabelDevice", reNameDev)
+	subscribe(mqtt,"HASwitchDev", HASwitchCapability)
+	subscribe(mqtt,"HALightDev", HALightCapability)
+	subscribe(mqtt,"HASensorDev", HASensorCapability)
+	subscribe(mqtt,"HABinarySensorDev", HABinarySensorCapability)
+	subscribe(mqtt,"HAInputBooleanDev", HAInputBooleanCapability)
+	subscribe(mqtt,"HAGroupDev", HAGroupCapability)
+	subscribe(mqtt,"OnOff", onoffEvent)
+	subscribe(mqtt,"Dim",dimEvent)
+	subscribe(mqtt,"Command",cmdEvent)
+	subscribe(mqtt,"Sensor",sensorEvent)
+	subscribe(mqtt,"BinarySensor",binarySensorEvent)
+	subscribe(mqtt,"SensorUnit",sensorUOM)
+	subscribe(mqtt,"Group",groupEvent)
+	subscribe(mqtt,"InputBoolean",inputBooleanEvent)
+	subscribe(mqtt,"Lookup", LookupManual)
+	subscribe(mqtt,"SensorDevClass",HABinSensorType)
+	
+	subscribe(adhoc,"OnOff",onoffEvent)
+	subscribe(adhoc,"topic", stateTopics)
+	subscribe(adhoc,"mapTopic", mapTopics)
+	subscribe(adhoc,"changeState",stateChange)
+	subscribe(adhoc,"changeLevel",levelChange)
+	
+	atomicState.MQTTOnOffDevices=0
+	atomicState.MQTTDimDevices=0
+	atomicState.adhocDevices=0
+	atomicState.MQTTRGBc=0
+	atomicState.MQTTRGBt=0
+	
+    // subscribe to the various capabilities /attributes
+	motionsensors.each { sen ->
+    sen.capabilities.each { cap ->
+        cap.attributes.each { attr ->
+            subscribe(sen, attr.name, sensorDevices)
+			log ("motion subscribing to "  + attr.name, "TRACE")
+        }
+	}
+	}	
+	sensors.each { sen ->
+    sen.capabilities.each { cap ->
+        cap.attributes.each { attr ->
+            subscribe(sen, attr.name, sensorDevices)
+			log ("sensors subscribing to "  + attr.name, "TRACE")
+        }
+    }
+	}	
+	colour.each { sen ->
+    sen.capabilities.each { cap ->
+        cap.attributes.each { attr ->
+            subscribe(sen, attr.name, colourDevices)
+			log ("RGB control subscribing to "  + attr.name, "TRACE")
+        }
+    }
+	}
+	
+	colourT.each { sen ->
+    sen.capabilities.each { cap ->
+        cap.attributes.each { attr ->
+            subscribe(sen, attr.name, colourDevices)
+			log ("RGB temp subscribing to "  + attr.name, "DEBUG")
+        }
+    }
+	}
+	
+	if (settings?.homieDevice) mqtt.setStateVar("homieDevice",settings?.homieDevice)
+	atomicState.delay = 0
+	count=0
+	if (settings?.adhoc!= null)
+	{
+		log ("["+(settings?.adhoc.size()) +"] manual/adhoc devices enabled for MQTT","INFO")
+		atomicState.delay += 1  // TODO tweak check we need this much delay reduced from 10 to 1
+		index=0
+		for (String item : settings?.adhoc) {
+			//atomicState.delay += 1
+			pauseExecution(200)  // TODO paces responses - NB sendTopics runs after 10 seconds currently i.e 20 devices - need to tweak
+			try {
+				adhoc[index++].getStateTopics()
+				count++
+			}
+			catch (e) {
+				log ("(Telnet) Device ${item} does not have MQTT virtual capabilities","WARN")
+			}
+		}
+		//atomicState.delay+= count  //TODO tweak  need to keep as int
+	}
+	atomicState.adhocDevices=count // settings?.adhoc.size()
+	log ("reinitializing", "TRACE")
+	atomicState.createDevices=false
+	atomicState.lastDevice=''
+	if (settings?.HEBasic){
+		subscribeOneOffTopics("Hubitat/${settings?.hubName}/+/+/set") // incoming cmds to control HE devices - all types .. or ..
+	}
+	if (settings?.homiePublish) {
+		subscribeOneOffTopics("homie/${atomicState.normHubName}/+/+/set") // incoming cmds to control HE devices - all types .. or could restrict to supported types
+	}
+	atomicState.nameMap = [:]
+	atomicState.topicMap=[:]
+	MQTTswitches = (settings?.switches)
+	count=0
+	nodes=""
+	if (MQTTswitches != null) {
+		log ("["+(MQTTswitches.size()) +  "] switches enabled for MQTT ", "TRACE")
+		def temp = atomicState.nameMap
+		for (String item : MQTTswitches) {
+   			log ("    MQTT Switch Device " + item, "TRACE")
+			normName= normalize(item)
+			nodes=nodes+normName +','
+			// Build a lookup table for normName to full name
+			temp[normName] = item
+	//switched(null, item, MQTTswitches.currentSwitch[0]) // sends an initial status message to MQTT
+	// Maybe here's a good place to setup the HA Discovery info
+			atomicState.MQTTOnOffDevices++
+		}
+		atomicState.nameMap = temp
+	}
+	else log ("[0] switches enabled for MQTT", "TRACE")
+	
+	MQTTdimmers = (settings?.dimmers)
+	if (MQTTdimmers != null){
+		log ("["+(MQTTdimmers.size()) +  "] dimmers enabled for MQTT","TRACE")
+		temp=atomicState.nameMap
+		for (String item : MQTTdimmers) {
+   			log ("    MQTT Dimmer Device " + item, "TRACE")
+			normName= normalize(item)
+			nodes=nodes+normName +','
+			temp[normName] = item  //TODO check we dont have duplicate names for two devices ??
+	//switchedDim(null, item, MQTTdimmers.currentSwitch[0])
+	// Maybe here's a good place to setup the HA Discovery info
+	// dimmed(null, item, MQTTdimmers.currentLevel[0])
+			atomicState.MQTTDimDevices++
+		}
+		atomicState.nameMap = temp
+	}
+	else log ("[0] dimmers enabled for MQTT","TRACE")
+	if (nodes.length()>0)    nodes=nodes.substring(0, nodes.length() - 1)
+	if (settings?.homiePublish) mqtt.publishMsg ("homie/${atomicState.normHubName}/"+'$nodes',nodes,1,true)
+	
+	MQTTRGB = (settings?.colour)
+	if (MQTTRGB != null){
+		log ("["+(MQTTRGB.size()) +  "] colour control enabled for MQTT","TRACE")
+		temp=atomicState.nameMap
+		for (String item : MQTTRGB) {
+   			log ("    MQTT Colour Control Device " + item, "TRACE")
+			normName= normalize(item)
+			nodes=nodes+normName +','
+			temp[normName] = item  //TODO check we dont have duplicate names for two devices ?? BUG  This is very possible here as same device !!
+	// switchedDim(null, item, MQTTRGB.currentSwitch[0])
+	// Maybe here's a good place to setup the HA Discovery info
+	// dimmed(null, item, MQTTRGB.currentLevel[0])
+			atomicState.MQTTRGBc++
+		}
+		atomicState.nameMap = temp
+	}
+	else log ("[0] colour control enabled for MQTT","TRACE")
+	if (nodes.length()>0)    nodes=nodes.substring(0, nodes.length() - 1)
+	if (settings?.homiePublish) mqtt.publishMsg ("homie/${atomicState.normHubName}/"+'$nodes',nodes,1,true)
+	
+	MQTTRGB = (settings?.colourT)
+	if (MQTTRGB != null){
+		log ("["+(MQTTRGB.size()) +  "] colour temp enabled for MQTT","TRACE")
+		temp=atomicState.nameMap
+		for (String item : MQTTRGB) {
+   			log ("    MQTT Colour Temp Device " + item, "TRACE")
+			normName= normalize(item)
+			nodes=nodes+normName +','
+			temp[normName] = item  //TODO check we dont have duplicate names for two devices ??
+	//switchedDim(null, item, MQTTRGB.currentSwitch[0])
+	// Maybe here's a good place to setup the HA Discovery info
+	//dimmed(null, item, MQTTRGB.currentLevel[0])
+			atomicState.MQTTRGBt++
+		}
+		atomicState.nameMap = temp
+	}
+	else log ("[0] colour temp enabled for MQTT","TRACE")
+	if (nodes.length()>0)    nodes=nodes.substring(0, nodes.length() - 1)
+	if (settings?.homiePublish) mqtt.publishMsg ("homie/${atomicState.normHubName}/"+'$nodes',nodes,1,true)
+	
+	synchDevices() // handles all the initial state publications for all enabled devices
+	
+	if(settings?.homieDiscovery) {
+		log ("homie discovery enabled", "INFO")
+		subscribeHomieTopic()
+		atomicState.delay += 5  //TODO tweak
+		runIn(atomicState.delay, "subscribeHomieStateTopics")  
+		atomicState.delay += 2  // TODO tweak - we have the number of homie devices very early in MQTT driver  reduced from 10 to 2
+		runIn (atomicState.delay, "subscribeHomieNameTopics")
+		atomicState.delay += 5 // TODO tweak
+	}
+	else log ("Skipping homie MQTT discovery", "INFO")
+	
+	if(settings?.HAStatestream){
+		log ("HA stateStream enabled", "INFO")
+		atomicState.delay += 5  //TODO tweak
+		runIn (atomicState.delay, "subscribeHADevices")
+		atomicState.delay += 5  //TODO tweak
+		runIn (atomicState.delay, "subscribeHADeviceEvents")
+		atomicState.delay += 10 // TODO tweak
+		atomicState.delay+=30  // TODO check and calculate based on # sensors
+	}
+	else log ("Skipping HA stateStream MQTT discovery", "INFO")
+	
+	log ("Total startup time will be around " + atomicState.delay + " seconds", "INFO")
+    runIn (atomicState.delay, "devSummary")
+}
+
+def wipe()  // TODO  check when this needs to run .. only having null issues because werent initialized at app install
+{
+	
+	atomicState.onoffDevices=[]
+	atomicState.dimDevices=[]
+	atomicState.sensorDevices=[]
+	atomicState.HASwitchDevices=[]
+	atomicState.HALightDevices=[]
+	atomicState.HASensorDevices=[]
+	atomicState.HABinarySensorDevices=[]
+	atomicState.HAInputBooleanDevices=[]
+	atomicState.HAGroupDevices=[]
+	log ("All atomicState devices[] cleared","WARN")
+}
+
+def synchDevices(evt) {
+log ("Resynch MQTT device states and HA discovery topics","INFO")
+
+	//TODO Others now  ???
+
+MQTTswitches = (settings?.switches)
+	if (MQTTswitches != null) {
+		for (String item : MQTTswitches) {
+			switched(null, item, "onoff", MQTTswitches.currentSwitch[0]) //TODO should this be switch ??
+		}
+	}	
+
+MQTTdimmers = (settings?.dimmers)
+	MQTTdimmers = (settings?.dimmers)
+	if (MQTTdimmers != null){
+		for (String item : MQTTdimmers) {
+			switchedDim(null, item,"onoff",  MQTTdimmers.currentSwitch[0])  //TODO BUG check might have to be RGB
+
+			dimmed(null, item, "dim", MQTTdimmers.currentLevel[0])
+		}
+	}
+	
+MQTTRGB = (settings?.colour)
+	if (MQTTRGB != null){
+		for (String item : MQTTRGB) {
+			switchedDim(null, item,"onoff", MQTTRGB.currentSwitch[0])  //?? handle in colourDevices() ??
+			dimmed(null, item, "dim", MQTTRGB.currentLevel[0])  //??
+			//colourDevices(null, item, "hue", MQTTRGB.currentHue[0])
+			//colourDevices(null, item, "saturation", MQTTRGB.currentSaturation[0])
+			//colourDevices(null, item, "level", MQTTRGB.currentLevel[0])  // TODO do we need this
+			hsv=[MQTTRGB.currentHue[0], MQTTRGB.currentSaturation[0], MQTTRGB.currentLevel[0]]
+			colourDevices(null, item, "hsv", hsv)
+
+		}
+	}
+	
+MQTTRGBT = (settings?.colourT)
+	if (MQTTRGBT != null){
+		for (String item : MQTTRGBT) {
+			switchedDim(null, item,"onoff", MQTTRGBT.currentSwitch[0])
+			dimmed(null, item, "dim", MQTTRGBT.currentLevel[0])
+			colourDevices(null,item,"RGBT",MQTTRGBT.currentColor[0]) // not useful as always #FFFFFF - what does this call provide additionally to MQTTRGB above ?
+		}
+	}	
+	
+loopDev = (settings?.sensors)     
+	if (loopDev != null){
+		//for (String item : loopDev) {
+			loopDev.each{
+			//sensor(null, item, loopDev.currentSwitch[0])
+			//dimmed(null, item, loopDev.currentLevel[0])
+			// actually think just have to call with name ??
+			mydName = it.name
+			myName = it.displayName
+				
+			//TODO issue is a 'sensor' can have mutiple sensor attributes - so for HA Discovery needs to be separate devices...
+			def attrs = it.supportedAttributes
+				// how do we know what attributes are actual sensors e.g. mode isn't
+				// need to set a boolean multiple if more that one attribute in use ??
+				
+				def multiple=false // this shows at least two attributes - otherwise can just use the device name in HA - NB TODO only checking 3 attributes currently
+				def oneAtLeast=false
+				if (it.currentTemperature!=null) oneAtLeast=true
+				if (it.currentBattery!=null){
+					if (oneAtLeast==true) multiple=true
+					oneAtLeast=true
+				}
+				if (it.currentMotion!=null){
+					if (oneAtLeast==true) multiple=true
+					oneAtLeast=true
+				}
+				log ("Sensor ${myName} has attributes ${attrs}","TRACE")  // not all are sensors  //log.error
+				if(it.currentTemperature!=null){
+					log ("## " + it.name+"_temperature" + " ##temp##  ${it.currentTemperature}","DEBUG") // + ${attrs}
+					sensorDevices(null, myName,"temperature", it.currentTemperature, multiple)  // is this true needed to how multiple devices
+				}
+				if(it.currentBattery!=null){
+					log ("## " + it.name+"_battery" + " ##temp##  ${it.currentBattery}","DEBUG") // + ${attrs}
+					sensorDevices(null, myName,"battery", it.currentBattery,multiple)
+				}
+				if(it.currentMotion!=null){
+					log ("## " + it.name + " ##motion##  ${it.currentMotion}","DEBUG") // + ${attrs}
+					sensorDevices(null, myName, "motion", it.currentMotion,multiple)
+				}
+
+				/*
+					attrs.each {
+						//log.debug "## ${myName} ##,           attribute ${it.name}, values: ${it.values}"
+						//log.debug "## ${myName} ##,           //attribute ${it.name}, dataType: ${it.dataType}"
+						log.debug "values: ${it.values}, ## ${myName} ##,    attribute ${it.name}, dataType: ${it.dataType}"
+					}
+				*/
+			//sensorDevices(null, item, null)
+		}
+	}
+
+	// For HA Discovery resending of Discovery messages I dont actually need the current states (values) just the HA config messages.
+	// Maybe just store and send those rather than this approach. Need to be wary of atomicState storage size limitations
+	// HOWEVER the sensorDevices() call above pushes state to the Homie topics and also uses evt.displayName which errors as no evt.
+	// Need to rethink this TODO BUG
+	// HA Discovery is probably no problems but populating homie might be - unless the content is persistent - can I insist that it is ???
+		
+	/*
+	sensors
+	tempSensors
+	motionSensors
+	batterySensors
+	humiditySensors
+	voltageSensors
+	contactSensors
+	thermostats
+	smokesensors
+	++ more
+	*/
+}
+
+def stateTopics(evt) {  // Returns names of all registered state topics for adhoc devices
+	subscribeOneOffTopics(evt.value)
+}
+
+def mapTopics(evt) {  	
+						//data.stateON and data.stateOFF available here too - (if defined in device)
+						//if there is no onoff state topic for the device then it will be created with the dim name and the map will have the same entry so lookup still works
+	log ( "###################### "+evt.value+" ######################", "TRACE")
+	def tempMap=atomicState.topicMap
+	def content=[:]
+	def data = parseJson(evt.data)
+	log ("Topic mapped key " + data.level + " to " + data.state + " with " + data.valueMax, "DEBUG")
+	if (data.valueMax!=null) valueMax=data.valueMax else valueMax='?'
+	if (data.stateON!=null) valueON=data.stateON else valueON='?'
+	if (data.stateOFF!=null) valueOFF=data.stateOFF else valueON='?'		
+	content=[topic: data.state, maxLevel: valueMax, stateON: data.stateON, stateOFF: data.stateOFF, type: "dim"]
+	tempMap[data.level]=content
+	content=[topic: data.state, maxLevel: valueMax, stateON: data.stateON, stateOFF: data.stateOFF, type: "onoff"]
+	tempMap[data.state]=content   // this creates an entry for the switch part of a dimmer so states are available
+	atomicState.topicMap = tempMap
+		for (e in tempMap) {
+    		log ( "[topic]: key = ${e.key}, value = ${e.value}","DEBUG")
+		}
+}
+
+def stateChange(evt) {  // for a manual adhoc device
+	def data = parseJson(evt.data)
+			index=0
+			for (String item : settings?.adhoc) {  // TODO optimise/eliminate this loop  !!!
+			if (item == evt.displayName){
+				log ("Matched item [" + index + "] "  + index, "TRACE")
+				mqtt.publishMsg (data.topic,evt.value)  //TODO check re persistence
+				}
+			index++
+	}
+}
+
+def levelChange(evt) {  // for a manual adhoc device
+	def data = parseJson(evt.data)
+			index=0  
+			for (String item : settings?.adhoc) {  //TODO optimise/eliminate this loop  !!!
+			if (item == evt.displayName){
+				log ("Matched item [" + index + "] "  + index,"TRACE")
+				mqtt.publishMsg (data.dimTopic,evt.value)  // TODO check re persistence
+				}
+			index++
+	}
+}
+
+private logDebug(msg) {
+	if (settings?.debugOutput || settings?.debugOutput == null) {
+		log ("$msg", "DEBUG")
+	}
+}
+
+private determineLogLevel(data) {
+
+    switch (data?.toUpperCase()) {
+        case "TRACE":
+            return 0
+            break
+        case "DEBUG":
+            return 1
+            break
+        case "INFO":
+            return 2
+            break
+        case "WARN":
+            return 3
+            break
+        case "ERROR":
+        	return 4
+            break
+		case "DISABLED":
+		    return 5
+			break
+        default:
+            return 1
+    }
+}
+
+def HADiscoveryAdvertise (name, type="none", category="none", payON="true",payOFF="false",nameSuffix='',UOM='') {  // payON and payOFF vary a lot for sensors so need extra params) {
+    if (!settings?.HADiscovery) return   // && HAtype!='?')
+		normName = normalize(name+nameSuffix) 
+	log ("Advertising ${name} device ${type}  ${category} to HA","INFO")
+	if (atomicState.nameMap.containsValue(name)) log ("Found in nameMap" + name, "DEBUG") else log ("NOT Found in nameMap" + name, "DEBUG")
+		sTopic="homie/${atomicState.normHubName}/${normName}"+'/onoff'   //TODO tidy
+		sDimTopic="homie/${atomicState.normHubName}/${normName}"+'/dim'
+		sColorTopic="homie/${atomicState.normHubName}/${normName}"+'/color'
+		sSensTopic="homie/${atomicState.normHubName}/${normalize(name)}"  // the suffix is not used here
+
+		pName = '"name":"'+name+nameSuffix+'"'
+		pUID = ',"unique_id":"Hubitat-MQTT:_' + normName + '"'
+		pDevClass=''
+		payload=''
+		if (type=="switch"|type=="light") {
+			pState = ',"state_topic":"'+ sTopic + '"'
+			pCmd = ',"command_topic":"'+ sTopic + '/set"'
+			pUOM = ''
+			pON = ',"payload_on":"'+payON+'"'
+			pOFF = ',"payload_off":"'+payOFF+'"'
+			pIcon = '' // ',"icon":"mdi:power"'
+			pDev = ''
+			pValTemp = ',"value_template":"{{ value }}"'
+			if (type=="switch") payload='{'+pName+pUID+pState+pCmd+pUOM+pON+pOFF+pIcon+pDev+pValTemp+'}'
+			if (type=="light") {
+				pOnType = ',"on_command_type":"first"'
+				pBriState = ',"brightness_state_topic":"' + sDimTopic + '"'
+				pBriCmd = ',"brightness_command_topic":"' + sDimTopic + '/set"'
+				pBriTemp= ',"brightness_value_template":"{{ value }}"'
+				pBriScale = ',"brightness_scale":100'
+				if (category=="colour") {
+					pColState = ',"color_temp_state_topic": "' + sColorTopic + '-temperature/temp"'
+					pColTempCmd = ',"color_temp_command_topic": "' + sColorTopic + '-temperature/set"'
+					pColTempVal = ',"color_temp_value_template": "{{ ((value | float / 100) * (500 - 153)) + 153  }}"'
+					pHSState = ',"hs_state_topic": "' + sColorTopic + '/hsv"'
+					pHSCmd = ',"hs_command_topic": "' + sColorTopic + '/set"'
+					pHSValTemp = ',"hs_value_template": "{{ value_json.h }},{{ value_json.s }}"'
+					HAtype="light"  // for discovery
+					payload='{'+pName+pUID+pState+pCmd+pUOM+pON+pOFF+pIcon+pDev+pValTemp+pOnType+pBriState+pBriCmd+pBriTemp+pBriScale+pColState+pColTempCmd+pColTempVal+pHSState+pHSCmd+pHSValTemp+'}'
+				}
+				else payload='{'+pName+pUID+pState+pCmd+pUOM+pON+pOFF+pIcon+pDev+pValTemp+pOnType+pBriState+pBriCmd+pBriTemp+pBriScale+'}'
+			}
+		}	
+		else if (type=="binary_sensor" | type=="sensor") {
+			 // TODO Look at why this is different to above and combine if poss
+			sTopic=sSensTopic+'/'+category
+			//pName = '"name":"'+name+'"'
+			//pON = ',"payload_on":"'+payON+'"'
+			//pOFF = ',"payload_off":"'+payOFF+'"'
+			//pDevClass=''
+			pState = ',"state_topic":"'+ sTopic + '"'
+			//if (UOM!='') pUOM = ',"unit_of_measurement":"'+UOM+'"' else pUOM=''
+			pIcon = '' // ',"icon":"mdi:power"'
+			pDev = ''
+			pValTemp = ',"value_template":"{{ value }}"'
+			if (type=="binary_sensor") {
+				// HA categories for various binary sensors https://www.home-assistant.io/components/binary_sensor/
+				// TODO must map binary_sensor payload values to ON OFF
+				if (category == "motion") pDevClass = ',"device_class": "motion"'
+				else if (category == "contact") pDevClass = ',"device_class": "window"'  // door garage_door opening
+				else if (category == "smoke-alarm") pDevClass = ',"device_class": "smoke"'
+				else if (category == "carbonMonoxide-alarm") pDevClass = ',"device_class": "gas"'
+				else if (category == "water") pDevClass = ',"device_class": "water"'
+				//else if (category == "battery") pDevClass = ',"device_class": "battery"'  // LOW/OK indicator, perhap set if < 10%
+				pON = ',"payload_on":"'+payON+'"'
+				pOFF = ',"payload_off":"'+payOFF+'"'
+				pUOM=''
+			}
+/*
+			else {
+				sTopic= "homie/louey/weatherview-sky/measure-wind-angle"
+				pState = ',"state_topic":"'+ sTopic + '"'
+				if (payON!='true') pUOM = ',"unit_of_measurement":"'+payON+'"' else pUOM=''
+				pON = ""
+				pOFF = ""
+			}
+*/
+			if (type=="sensor") pUOM=',"unit_of_measurement": "'+UOM+'"'
+			payload='{'+pName+pUID+pDevClass+pState+pUOM+pON+pOFF+pIcon+pDev+pValTemp+'}'    
+		}
+ 
+		//if (!atomicState.started) //TODO BUG Can't limit this here as these happen adhoc after startup unless can force early state synch on startup
+		// will see what results if we repeatedly send them - maybe OK as send only
+		// Was OK for sensors but RGB bulbs wont be - got mismatch of level/state - will need to send just once so need state synch
+		//if (!atomicState.started && payload.size()>1 )// shouldnt need this anymore although I see sesnors keep sensing when activated 
+		if (payload.size()>1 ){  // shouldnt need this anymore although I see sesnors keep sensing when activated 
+	    //if (payload.size()>1 ) {
+			log ("Sending Discovery: message "+ name + " "  + payload, "DEBUG") // TODO sending on every state change
+			if (settings?.HARemember=="Remember") mqtt.publishMsg ("${settings?.HADiscoveryTopic}/${type}/${normName}/config", payload.toString(),1,true)
+			else mqtt.publishMsg ("${settings?.HADiscoveryTopic}/${type}/${normName}/config", payload)
+		}
+   		atomicState.lastDevice=name  // kludge atm to pair up separate events arriving here for hue and sat - there's another way too (see above)
+	
+}	
+
+def log(data, type) {
+	data = "MQTT: ${data ?: ''}"
+    if (determineLogLevel(type) >= determineLogLevel(settings?.logging ?: "INFO")) {
+        switch (type?.toUpperCase()) {
+            case "TRACE":
+                log.trace "${data}"
+                break
+            case "DEBUG":
+                log.debug "${data}"
+                break
+            case "INFO":
+                log.info "${data}"
+                break
+            case "WARN":
+                log.warn "${data}"
+                break
+            case "ERROR":
+                log.error "${data}"
+                break
+			case "DISABLED":
+			    break
+            default:
+                log.error "MQTT: -- ${device.label} -- Invalid Log Setting"
+        }
+    }
+}
+
+private removeAllChildDevices() {   
+	getChildDevices().each {deleteChildDevice(it.deviceNetworkId)}
+	log ("Deleted all child devices", "WARN")
+}
+
+//#######################################################################################################################################
+//#######################################   This section handles subscriptions to MQTT topics   #########################################
+//#######################################################################################################################################
+
+def subscribeHomieTopic()
+{
+	log ("Adding homie property and node subscription topics for " + atomicState.homie, "INFO")
+	mqtt.subscribeTopic('homie/'+atomicState.homie+'/$nodes')
+	mqtt.subscribeTopic('homie/'+atomicState.homie+'/+/$properties')
+	mqtt.subscribeTopic('homie/'+atomicState.homie+'/+/$type')      //TODO from here could get a device > type list as this returns all devices with a type
+}
+
+def subscribeHomieStateTopics()
+{
+	log ("Adding homie onoff & dim events subscription topics ", "INFO")
+	mqtt.subscribeTopic('homie/'+atomicState.homie+'/+/onoff')
+	mqtt.subscribeTopic('homie/'+atomicState.homie+'/+/dim')
+	// how to add sensors ??	looks like individually				//mqtt.subscribeTopic('homie/'+atomicState.homie+'/+/$type') already above
+	//mqtt.subscribeTopic('homie/'+atomicState.homie+'/+/sensorname')	// TODO this is no good for sensors as each topic is named differently and need $type=sensor
+    mqtt.subscribeTopic('homie/'+atomicState.homie+'/+/+/$unit')    // This will return sensors that have units from which we could grab sensor name and build tree - and subscribe to enabled devices
+	//mqtt.subscribeTopic('homie/'+atomicState.homie+'/+/+')		// need to check for $sensor and then enable whole tree or read $properties and enable individually or use $type above
+	// too much returned by above
+	// maybe add sensor name from enabled devices ??    			// how do we determine its a sensor value for a random incoming MQTT message......?
+																	// need to know either via $sensor or name ??
+																	//mqtt.subscribeTopic('homie/'+atomicState.homie+'/+/$properties')    // already subscribed above
+																	// multiple sensor names but have count at least, sensor values are not dependably retained on MQTT
+	
+}
+
+def subscribeHomieNameTopics()
+{
+	log ("Adding homie name subscription topics ", "INFO")
+	mqtt.subscribeTopic('homie/'+atomicState.homie+'/+/$name')
+}
+
+def subscribeHADevices()  // where is this called from ?
+{
+	log ("Adding HA switches, lights and sensors friendly names topics ", "INFO")
+	mqtt.subscribeTopic(atomicState.HA+'/switch/+/friendly_name')
+	mqtt.subscribeTopic(atomicState.HA+'/light/+/friendly_name')
+	mqtt.subscribeTopic(atomicState.HA+'/sensor/+/friendly_name') // // this creates device
+	mqtt.subscribeTopic(atomicState.HA+'/binary_sensor/+/device_class')// this creates device
+	//mqtt.subscribeTopic(atomicState.HA+'/binary_sensor/+/friendly_name')  // TODO spread /delay a bit
+	mqtt.subscribeTopic(atomicState.HA+'/group/+/friendly_name')
+	mqtt.subscribeTopic(atomicState.HA+'/input_boolean/+/friendly_name')
+	//mqtt.subscribeTopic(atomicState.HA+'/persistent_notification/+/friendly_name')
+	//mqtt.subscribeTopic(atomicState.HA+'/updater/+/friendly_name')
+}
+
+def subscribeHADeviceEvents() // This runs 10 secs after above currently
+{
+	log ("Adding HA switch, sensor, and light events topics", "INFO")
+	mqtt.subscribeTopic(atomicState.HA+'/switch/+/state')
+	mqtt.subscribeTopic(atomicState.HA+'/light/+/state')
+		mqtt.subscribeTopic(atomicState.HA+'/light/+/brightness')
+	mqtt.subscribeTopic(atomicState.HA+'/sensor/+/state')// TODO spread /delay a bit
+		mqtt.subscribeTopic(atomicState.HA+'/sensor/+/unit_of_measurement')// TODO spread /delay a bit
+	mqtt.subscribeTopic(atomicState.HA+'/binary_sensor/+/friendly_name')  // TODO spread /delay a bit
+	mqtt.subscribeTopic(atomicState.HA+'/binary_sensor/+/state') // TODO spread /delay a bit
+		//mqtt.subscribeTopic(atomicState.HA+'/binary_sensor/+/device_class')// TODO spread /delay a bit  // moved above as this creates device
+	mqtt.subscribeTopic(atomicState.HA+'/group/+/state')
+	mqtt.subscribeTopic(atomicState.HA+'/input_boolean/+/state')
+	//mqtt.subscribeTopic(atomicState.HA+'/persistent_notification/+/state')
+	//mqtt.subscribeTopic(atomicState.HA+'/updater/+/state')
+}
+
+def subscribeOneOffTopics(topic)
+{
+	mqtt.subscribeTopic(topic)
+}
+
+//#######################################################################################################################################
+//##############################   This section takes internal events/state changes and updates the devices  ###############################
+//##############################   It also publishes discovery topics using the  HA MQTT discovery protocol  ###############################
+//#######################################################################################################################################
+
+def switched(evt, name=null, type=null, state=null)
+{
+	if (evt!=null)
+	{
+		name=evt.displayName
+		state=evt.value
+		xName=evt.name
+		log(" Device is switched ${state}  ${name} ${xName}", "DEBUG")
+	}   
+	else 
+	{
+		xName=name
+		log(" Device (synch) is switched ${state}  ${name} ${xName}", "DEBUG")
+	}
+	if (settings?.HEBasic)
+		{
+				mqtt.publishMsg ("Hubitat/${settings?.hubName}/${name}/onoff","${state}") // basic MQTT status
+		}
+	if (settings?.homiePublish) {
+			normName = normalize(name) 
+			if (state=="on") nState = "true" else nState = "false"    //TODO make flexible
+				
+		
+			//================  Limited homie spec implemenation ================
+			mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/$properties',"onoff",1,true)  // limited homie implementation
+			mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/$name',name,1,true)   
+			mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/$type',"socket",1,true)  
+			mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/onoff/$settable',"true",1,true) 
+			mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/onoff/$name',name,1,true) 
+			mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/onoff/$datatype',"boolean",1,true)
+			mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/onoff/$retained',(settings?.homieStatesPersist).toString(),1,true)
+			sTopic="homie/${atomicState.normHubName}/${normName}"+'/onoff'
+			mqtt.publishMsg (sTopic,nState,1,settings?.homieStatesPersist) 
+		    //log ("Updated ${sTopic} to ${nState}", "ERROR")   // only for log visibility
+			//===================================================================
+	}
+		if (evt==null) {  // this will limit HADiscovery to startup or 'upon request' for devices
+			HADiscoveryAdvertise(name,"switch","none")	
+		}
+		else log ("HADiscovery switched discarded for ${name}","INFO")
+}
+
+def switchedDim(evt, name=null, type=null, state=null) 
+{
+	if (evt!=null)
+	{
+		name=evt.displayName
+		state=evt.value
+		xName=evt.name
+		log("Device switchedDim ${state}  ${name} ${xName}", "DEBUG")
+	} 
+	else 
+	{
+		xName=name
+		log("Device (synch) switchedDim ${state}  ${name} ${xName}", "DEBUG")
+	}
+		if (settings?.HEBasic)
+		{
+				mqtt.publishMsg ("Hubitat/${settings?.hubName}/${name}/onoff","${state.toString()}") // basic MQTT status  TODO persistence ?
+		}
+
+		if (settings?.homiePublish) {
+			normName = normalize(name) 
+			if (state=="on") nState = "true" else nState = "false"  // TODO customisable
+				
+		
+			//================  Limited homie spec implemenation ================
+			mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/$properties',"onoff,dim",1,true)   // limited homie implementation
+			mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/$name',name.toString(),1,true)   
+			mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/$type',"light",1,true)  
+			mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/onoff/$settable',"true",1,true)   
+			mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/onoff/$name',name.toString(),1,true)  
+			mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/onoff/$datatype',"boolean",1,true)
+			mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/onoff/$retained',(settings?.homieStatesPersist).toString(),1,true)
+			mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/onoff',nState.toString(),1,settings?.homieStatesPersist)
+			//log ("Updated homie/${atomicState.normHubName}/${normName}/onoff to ${nState.toString()}", "ERROR")   // only for log visibility
+			//===================================================================
+		}
+	if (settings?.HADiscovery){
+		if (evt==null) {  // this will limit HADiscovery to startup or 'upon request' for devices
+		HADiscoveryAdvertise(name,"switch","none")
+		}
+		else log ("HADiscovery switchedDim discarded for ${name}","INFO")
+	}
+}
+
+def dimmed(evt, name=null, type=null, state=null)
+{
+	if (evt!=null)
+	{
+		name=evt.displayName
+		state=evt.value
+		xName=evt.name
+		log ("Device dimmed ${state}  ${name}", "DEBUG")
+	} 
+	else {
+		xName=name
+		log ("Device (synch) dimmed ${state}  ${name}", "DEBUG")
+	}
+	if (settings?.HEBasic) {
+		mqtt.publishMsg ("Hubitat/${settings?.hubName}/${name}/dim","${state}")
+	}
+	
+	if (settings?.homiePublish) {
+    	normName = normalize(name) 
+		//================  Limited homie spec implemenation ================
+		sTopic="homie/${atomicState.normHubName}/${normName}"+'/onoff'
+		sDimTopic="homie/${atomicState.normHubName}/${normName}"+'/dim'
+		mqtt.publishMsg (sDimTopic,"${state}",1,true)
+		//log ("Updated ${sDimTopic} to ${state}", "ERROR")   // only for log visibility
+		mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/$properties',"onoff,dim",1,true)  // limited homie implementation
+		mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/$name',"${name}",1,true)  
+		mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/$type',"light",1,true)   
+		mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/dim/$settable',"true",1,true)  
+		mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/dim/$name',"${name}",1,true) 
+		mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/dim/$datatype',"integer",1,true)
+		mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/dim/$retained',(settings?.homieStatesPersist).toString(),1,true)
+		mqtt.publishMsg ("homie/${atomicState.normHubName}/${normName}"+'/dim/$format',"0:100",1,true)
+		//===================================================================
+	}
+	if (evt==null) {  // this will limit HADiscovery to startup or 'upon request' for devices
+		HADiscoveryAdvertise(name,"light","none")
+	}
+	else log ("HADiscovery dimmed discarded for ${name}","INFO")
+}
+
+def sensorDevices(evt, name=null, type=null, state=null, multiple=false)  // subs must be used in HA discovery as device must be separated into multiple entities
+{
+
+	if (evt!=null)
+	{
+		name=evt.displayName
+		state=evt.value
+		xType=evt.name  // this is the attribute name
+		log ("This got called by event ${name} with ${state}   ${evt.getDevice()}  ${evt.device.typeName} ${xType} ${evt.getDisplayName()}", "DEBUG")
+	} 
+	else {
+		xType=type
+		if (multiple) nameSuffix='_'+type else nameSuffix=''
+		xName=name+nameSuffix
+		log ("sensorDevices (synch) called with name:${name}    xName: ${xName}    type: ${type}    state: ${state}    multiple: ${multiple}","DEBUG")
+	}
+	    normName = normalize(name)
+		normxName = normalize(xName) 
+		if (settings?.HEBasic) {
+			mqtt.publishMsg ("Hubitat/${settings?.hubName}/${name}/${xType}","${state.toString()}")
+		}
 		HAtype='unknown'
 		UOM=''
 		if (settings?.homiePublish) {  //TODO case rather than if
@@ -124,3 +1141,1374 @@
 				if (state=='dry') state='false'
 			}
 			else category = 'unknown'
+			
+			sTopic="homie/${atomicState.normHubName}/${normName}"     //+category
+			//================  Limited homie spec implemenation ================
+			mqtt.publishMsg (sTopic+'/$properties',category,1,true)   // limited homie implementation
+			mqtt.publishMsg (sTopic+'/$name',name.toString(),1,true)   
+			mqtt.publishMsg (sTopic+'/$type',"sensor",1,true) 
+			mqtt.publishMsg (sTopic+'/'+category+'/$settable',"false",1,true)   
+			mqtt.publishMsg (sTopic+'/'+category+'/$name',name.toString(),1,true)  
+			//mqtt.publishMsg (sTopic+'/'+category+'/$datatype',"float",1,true)
+			mqtt.publishMsg (sTopic+'/'+category+'/$retained',(settings?.homieStatesPersist).toString(),1,true)
+			//mqtt.publishMsg (sTopic+'/'+category+'/$unit','°C',1,true)
+			mqtt.publishMsg (sTopic+'/'+category,state.toString(),1,settings?.homieStatesPersist)  // <<<<<   This publishes the actual event value
+			//log ("Updated " +sTopic+'/'+ category + " to ${nState.toString()}", "ERROR")   // only for log visibility
+			//===================================================================
+	}
+	// payON and payOFF vary a lot for sensors so need extra params
+	if (evt==null) {  // this will limit HADiscovery to startup or 'upon request' for devices
+		if (multiple) {
+			HADiscoveryAdvertise(name,HAtype,category,payON,payOFF,nameSuffix,UOM)  // these are created as sub topics
+		}
+		else HADiscoveryAdvertise(name,HAtype,category,payON,payOFF,sTopic+'/'+category,UOM)  // will only be called once
+	}
+	else log ("HADiscovery sensor discarded for ${name}","INFO")
+	
+	//TODO Do I need to publish HA Discovery before or after homie state topics - if they are not retained ??  Check with all these
+}
+//def dimmed(evt, name=null, type=null, state=null)
+def colourDevices(evt, name=null,type=null, state=null) {
+	
+	if (evt!=null)
+	{
+		name=evt.displayName
+		state=evt.value
+		xName=evt.name
+		xType=evt.name  // this is the attribute name
+		log ("Got a colour event " + evt.name + " " + evt.value, "DEBUG") 
+	} 
+	else {
+		xName=name
+		xType=type
+		log ("Got a colour synch " + xName + " " + type + " " + state, "DEBUG") 
+	}
+	
+	normName = normalize(name)
+	normxName = normalize(xName) 
+	if (atomicState.lastDevice==name) log ("Colour ${name} name match with previous ${xName}","DEBUG")
+	if (settings?.HEBasic) {
+		mqtt.publishMsg ("Hubitat/${settings?.hubName}/${name}/${xType}","${state.toString()}")  // TODO This is generalised needs tweaking
+	}
+	if (settings?.homiePublish) {  //TODO case rather than if
+		sTopic="homie/${atomicState.normHubName}/${normName}"
+		category='unknown'
+		// TODO
+		// colorName
+		// RGB
+		// color
+		 
+		// with colour temperature capability
+		//color
+		//colorName
+		//colorTemperature
+		//RGB
+		
+			if (xType=='colorTemperature'){
+				category='color-temperature'
+				mqtt.publishMsg (sTopic+'/'+category+'/$datatype',"integer",1,true)
+				mqtt.publishMsg (sTopic+'/'+category+'/$unit','~',1,true)
+				mqtt.publishMsg (sTopic+'/'+category+'/$format','200:700',1,true)
+				mqtt.publishMsg (sTopic+'/'+category+'/$settable','true',1,true)	
+				//UOM="%"
+				HAtype="RGB"
+			}
+			else if (xType=='dim'){  // DONT think this happens
+				category='DIM'
+				mqtt.publishMsg (sTopic+'/'+category+'/$datatype',"integer",1,true)
+				//mqtt.publishMsg (sTopic+'/'+category+'/$unit','?',1,true)
+				mqtt.publishMsg (sTopic+'/'+category+'/$format','0:100',1,true)
+				mqtt.publishMsg (sTopic+'/'+category+'/$settable','true',1,true)	
+				//UOM="%"
+				HAtype="RGB"
+			}
+
+			else if (xType=='hue'){
+				category='color'
+				mqtt.publishMsg (sTopic+'/'+category+'/$datatype',"color",1,true)
+				mqtt.publishMsg (sTopic+'/'+category+'/$unit','hsv',1,true)
+				mqtt.publishMsg (sTopic+'/'+category+'/$format','hsv',1,true)
+				mqtt.publishMsg (sTopic+'/'+category+'/$settable','true',1,true)
+				mqtt.publishMsg (sTopic+'/'+category+'/h',state.toString(),1,settings?.homieStatesPersist)
+				int temp=state.toInteger()
+				temp=(temp*36)/10
+				atomicState.hue= temp.toString() + '#' + name
+				//UOM="%"
+				HAtype="RGB"
+			}
+			else if (xType=='level'){  //hope this doesn't conflict with dimmed
+				category='color'
+				mqtt.publishMsg (sTopic+'/'+category+'/$datatype','hsv',1,true)
+				mqtt.publishMsg (sTopic+'/'+category+'/$unit','hsv',1,true)
+				mqtt.publishMsg (sTopic+'/'+category+'/$format','hsv',1,true)
+				mqtt.publishMsg (sTopic+'/'+category+'/$settable','true',1,true)
+				mqtt.publishMsg (sTopic+'/'+category+'/v',state.toString(),1,settings?.homieStatesPersist)  // TODO Check is this right
+				//mqtt.publishMsg (sTopic+'/'+category+'-temperature/temp',state.toString(),1,settings?.homieStatesPersist) 
+				atomicState.lev = state + '#' + name
+				category='dim'
+				mqtt.publishMsg (sTopic+'/'+category+'/$datatype',"integer",1,true)
+				mqtt.publishMsg (sTopic+'/'+category+'/$unit','%',1,true)
+				mqtt.publishMsg (sTopic+'/'+category+'/$format','0:100',1,true)
+				mqtt.publishMsg (sTopic+'/'+category+'/$settable','true',1,true)
+				//UOM="%"
+				HAtype="RGB"
+			}
+			else if (xType=='saturation'){   
+				category='color'
+				mqtt.publishMsg (sTopic+'/'+category+'/$datatype',"color",1,true)
+				mqtt.publishMsg (sTopic+'/'+category+'/$unit','hsv',1,true)
+				mqtt.publishMsg (sTopic+'/'+category+'/$format','hsv',1,true)
+				mqtt.publishMsg (sTopic+'/'+category+'/$settable','true',1,true)
+				mqtt.publishMsg (sTopic+'/'+category+'/s',state.toString(),1,settings?.homieStatesPersist)
+				atomicState.sat = state + '#' + name
+				//UOM="%"
+				HAtype="RGB"
+			}
+		else if (xType=="hsv") {
+				category='color'
+			
+				mqtt.publishMsg (sTopic+'/'+category+'/$datatype',"color",1,true)
+				mqtt.publishMsg (sTopic+'/'+category+'/$unit','hsv',1,true)
+				mqtt.publishMsg (sTopic+'/'+category+'/$format','hsv',1,true)
+				mqtt.publishMsg (sTopic+'/'+category+'/$settable','true',1,true)
+				//mqtt.publishMsg (sTopic+'/'+category+'/h',state[0].toString(),1,settings?.homieStatesPersist)
+				//mqtt.publishMsg (sTopic+'/'+category+'/s',state[1].toString(),1,settings?.homieStatesPersist)
+				//mqtt.publishMsg (sTopic+'/'+category+'/v',state[2].toString(),1,settings?.homieStatesPersist)  // TODO Check is this right
+			
+				mqtt.publishMsg (sTopic+'/color',"${state[0]},${state[1]},${state[2]}",1,settings?.homieStatesPersist)
+	   			mqtt.publishMsg (sTopic+'/color/$format','hsv',1,true)
+				mqtt.publishMsg (sTopic+'/color/hsv','{"h":'+state[0].toString()+',"s":'+state[1].toString()+',"v":'+state[2].toString()+'}',1,settings?.homieStatesPersist)		
+				HAtype="RGB"
+		}
+			
+			
+			
+			
+			
+			else if (xType=='onoff'){   // Dont think this happens  - this topic created by the 'switched' event
+				category='ONOFF'
+				mqtt.publishMsg (sTopic+'/'+category+'/$datatype','boolean',1,true)
+				//mqtt.publishMsg (sTopic+'/'+category+'/$unit','?',1,true)
+				//mqtt.publishMsg (sTopic+'/'+category+'/$format','0:100',1,true)
+				mqtt.publishMsg (sTopic+'/'+category+'/$settable','true',1,true)	
+				//UOM="%"
+				HAtype="RGB"
+			}
+			else if (xType=='switch'){   // hope this doesnt conflict with switchedDim - ot is called
+				category='onoff'
+				mqtt.publishMsg (sTopic+'/'+category+'/$datatype','boolean',1,true)
+				mqtt.publishMsg (sTopic+'/'+category+'/$settable','true',1,true)	
+				//UOM="%"
+				HAtype="RGB"
+			}
+		else log ("Received a new colour event ${xType} from ${name}","TRACE")
+		
+		if (category=="unknown") log ("Need to handle ${xType} in RGB colour", "WARN")
+		
+		if (xType=="RGB"||xType=="RGBT")
+		{
+			category='color' // this is a temporary kludge TODO better
+			log ("Ignoring ${xTYPE} for  ${name.toString()} value ${state.toString()}","WARN")
+			return  // This is overwriting color attribute with #FFFFFF as currentColor() returns that so dont action
+		}
+		log ("Handling an ${xType} event - for ${name.toString()}", "WARN")
+		
+
+			mqtt.publishMsg (sTopic+'/$properties',category,1,true)   // limited homie implementation
+			mqtt.publishMsg (sTopic+'/$name',name.toString(),1,true)   
+			mqtt.publishMsg (sTopic+'/$type',"RGBT light",1,true)   
+			mqtt.publishMsg (sTopic+'/'+category+'/$name',name.toString(),1,true)  
+			mqtt.publishMsg (sTopic+'/'+category+'/$retained',(settings?.homieStatesPersist).toString(),1,true)
+			if (state=="on") state = "true" 
+			else if (state=='off') state = "false"  // TODO customisable
+			mqtt.publishMsg (sTopic+'/'+category,state.toString(),1,settings?.homieStatesPersist)
+		//	mqtt.publishMsg (sTopic+'/color/r',255,1,settings?.homieStatesPersist)  /? TODO What is this for ? Red ? but no g or b ??
+		
+			//{"h":216,"s":100,"v":67}
+	//TODO BUG refine this by checking name matches (if use this)
+	//	mqtt.publishMsg (sTopic+'/color',"${extractInt(atomicState.hue)},${extractInt(atomicState.sat)},${extractInt(atomicState.lev)}",1,settings?.homieStatesPersist)
+	    mqtt.publishMsg (sTopic+'/color/$format','hsv',1,true)
+	//	mqtt.publishMsg (sTopic+'/color/hsv','{"h":'+extractInt(atomicState.hue)+',"s":'+extractInt(atomicState.sat)+',"v":'+extractInt(atomicState.lev)+'}',1,settings?.homieStatesPersist)
+	}
+	if (evt==null) {  // this will limit HADiscovery to startup or 'upon request' for devices
+		HADiscoveryAdvertise(name,"light","colour")
+	}
+	else log ("HADiscovery RGB discarded for ${name}","INFO")
+	
+	
+}
+
+//#######################################################################################################################################
+//#########################   This section adds the names to the dropdown selectors and creates the devices   ###########################
+//#######################################################################################################################################
+
+def onoffCapability(evt) {
+	temp = atomicState.onoffDevices
+	if (temp==null) temp=[]
+	if (temp.contains(evt.value)) {
+		log ("Already in dropdown list: ${evt.value}", "TRACE")
+	}
+	else { 
+		log ("Adding to dropdown list: ${evt.value}", "TRACE")
+		temp.add(evt.value)
+		atomicState.onoffDevices=temp
+	}
+	//log("Creating homie device " + evt.value,"TRACE")
+	createChildDevice (evt.value, "onoff", "homie", evt.value)
+}
+
+def dimCapability(evt) {  //TODO merge with above
+	temp = atomicState.dimDevices
+	if (temp==null) temp=[]
+	if (temp.contains(evt.value)) {
+		log ("Already in list: ${evt.value}", "TRACE")
+	}
+	else {
+		log ("Homie adding dim to list: ${evt.value}", "TRACE")
+		temp.add(evt.value)
+		atomicState.dimDevices = temp
+	}
+	createChildDevice (evt.value, "dim", "homie", evt.value)
+}
+
+def sensorCapability(evt) {  //TODO merge with above
+	temp = atomicState.sensorDevices
+	if (temp==null) temp=[]
+	if (temp.contains(evt.value)) {
+	log ("Already in list: ${evt.value}", "TRACE")
+	}
+	else {
+		log ("Homie adding sensor to list: ${evt.value}", "TRACE")
+		temp.add(evt.value)
+		atomicState.sensorDevices = temp
+	}
+	createChildDevice (evt.value, "sensor", "homie", evt.value)
+}
+
+def HASwitchCapability(evt) {  //TODO merge with above
+	temp = atomicState.HASwitchDevices
+	if (temp==null) temp=[]
+	def data = parseJson(evt.data)
+	label=data.label
+	if (temp.contains(evt.value)) {
+		//log ("Already in list: ${evt.value}", "TRACE")
+	}
+	else {
+		log ("HA Adding switch to list: ${evt.value}  label ", "TRACE")
+		temp.add(evt.value)
+		atomicState.HASwitchDevices = temp
+	}
+	createChildDevice (evt.value, "onoff", "HA", label)
+}
+
+def HALightCapability(evt) { //TODO merge with above
+	temp = atomicState.HALightDevices
+	if (temp==null) temp=[]
+	def data = parseJson(evt.data)
+	label=data.label
+	if (temp.contains(evt.value)) {
+		//log("Already in list: ${evt.value}", "TRACE")
+	}
+	else {
+		log ("HA Adding light to list: ${evt.value}  label ", "TRACE")
+		temp.add(evt.value)
+		atomicState.HALightDevices = temp
+	}
+	createChildDevice (evt.value, "dim", "HA", label)
+}
+
+def HASensorCapability(evt) {  // TODO merge with above
+	temp = atomicState.HASensorDevices
+	if (temp==null) temp=[]
+	def data = parseJson(evt.data)
+	label=data.label
+	if (temp.contains(evt.value)) {
+		//log ("Already in list: ${evt.value}", "TRACE")
+	}
+	else {
+		log ("HA Adding sensor to list: ${evt.value}  label ", "TRACE")
+		temp.add(evt.value)
+		atomicState.HASensorDevices = temp
+	}
+	createChildDevice (evt.value, "sensor", "HA", label)
+}
+
+def HABinarySensorCapability(evt) {  // TODO merge with above
+	temp = atomicState.HABinarySensorDevices
+	if (temp==null) temp=[]
+	def data = parseJson(evt.data)
+	dType=data.type
+	if (temp.contains(evt.value)) {
+		//log ("Already in list: ${evt.value}", "TRACE")
+	}
+	else {
+		log ("HA Adding binary sensor to list: ${evt.value}  ${dType}  ", "DEBUG")
+		temp.add(evt.value)
+		atomicState.HABinarySensorDevices = temp
+	}
+	// 4th param 'friendlyname' is not yet available so evt.value passed instead - will be renamed later in reNameDev()
+	createChildDevice (evt.value, "binary_sensor", "HA", evt.value, dType)  
+}
+
+def HAGroupCapability(evt) {  // TODO merge with above
+	temp = atomicState.HAGroupDevices
+	if (temp==null) temp=[]
+	def data = parseJson(evt.data)
+	label=data.label
+	if (temp.contains(evt.value)) {
+		//log ("Already in list: ${evt.value}", "TRACE")
+	}
+	else {
+		log ("HA Adding group to list: ${evt.value}  label ", "TRACE")
+		temp.add(evt.value)
+		atomicState.HAGroupDevices = temp
+	}
+	createChildDevice (evt.value, "group", "HA", label)
+}
+
+def HAInputBooleanCapability(evt) {  // TODO merge with above
+	temp = atomicState.HAInputBooleanDevices
+	if (temp==null) temp=[]
+	def data = parseJson(evt.data)
+	label=data.label
+	if (temp.contains(evt.value)) {
+		//log ("Already in list: ${evt.value}", "TRACE")
+	}
+	else {
+		log ("HA Adding group to list: ${evt.value}  label ", "TRACE")
+		temp.add(evt.value)
+		atomicState.HAInputBooleanDevices = temp
+	}
+	createChildDevice (evt.value, "inputBoolean", "HA", label)
+}
+
+//########################################################################################################################################
+//###########################  This section finds the device from incoming MQTT 'set' message to allow control   #########################
+//########################################################################################################################################
+
+def LookupManual(evt) {
+	def dimDevice=false
+	def onoffDevice=false
+	def data = parseJson(evt.data)
+	deviceID=data.topic
+	if (settings?.HEBasic)
+	{
+		if (deviceID.indexOf ("Hubitat/"+settings?.hubName)==0)  {  // this is an incoming MQTT command on the basic topic control topic 
+			log ("Need to action this command " + data + " " + deviceID, "TRACE")
+		}
+	}
+	tempMap=atomicState.topicMap
+	// content=[topic: data.state, maxLevel: valueMax, stateON: data.stateON, stateOFF, data.stateOFF]
+	log ("Need to find devices using [" + evt.value + "] "+ deviceID,"TRACE")
+	log ("Settings " + settings?.adhoc, "TRACE")
+	log ("Looking up in topic map for "+ deviceID + "  ==  "  + tempMap[deviceID], "DEBUG")
+	LookupID = tempMap[deviceID]
+	if (LookupID != null)
+		{
+			log ("***** Found in map ***** for "+ data.topic + "  ==  "  + LookupID.topic, "DEBUG")
+			devType="map"
+			if (LookupID.type=="onoff") 
+			{
+				onoffDevice=true
+				stateON = LookupID.stateON
+				stateOFF = LookupID.stateOFF
+			}
+			else if (LookupID.type=="dim") 
+			{
+				dimDevice=true
+				LookupLevel=LookupID.maxLevel
+				if (LookupLevel == '?') {
+					log ("However there was no corresponding MaxValue for " + data.topic, "WARN")
+					log ("The valueMap is ... " + LookupLevel,"WARN")
+				}
+			}
+			deviceID = LookupID.topic
+		}
+		else {
+			log ("Didnt find this entry in the topicMap lookup for " + deviceID  , "WARN")
+			for ( e in tempMap ) {
+    			log ("<topic>: key = ${e.key}, value = ${e.value}","DEBUG")
+			}
+			devType='?'
+		}
+		
+	// should be found later by deviceNetworkID lookup (below)
+		index=0	
+		for (String item : settings?.adhoc) {
+			if (adhoc[index].deviceNetworkId == "MQTT:Internal "+ deviceID){
+				log ("Manual device found via Lookup " + item, "DEBUG")
+				if (devType != "map") devType="manual"
+				// TODO quit loop when found ??
+				if (!dimDevice) onoffDevice=true //TODO - is it right to assume this ?
+				device=adhoc[index]  
+				//TODO exit loop on match or match multiple ? - currently matching last
+			}
+			index++
+		}
+	
+		if (device==null) // try the HE local devices published to MQTT
+		{
+				topic = data.topic.split('/')
+				if (topic[0] != "Hubitat")
+				{
+					log ("Unexpected topic " + data.topic + " " + topic[0], "ERROR")
+					return
+				}
+				dName=topic[2]
+			    log ("Didnt find the device by DNI lookup either " + dName, "WARN")
+				index=0
+				for (String item : settings?.switches) {   // SWITCHES 
+					if (item==dName) 
+					{
+						log ("Found " + dName + " in switches. DNI: " + switches[index].deviceNetworkId, "INFO")
+						device=switches[index]
+						if (topic[3]=="onoff") onoffDevice=true
+						devType="system"
+					}
+					index++
+				}
+				index=0
+				for (String item : settings?.dimmers) {   // DIMMERS
+					if (item==dName) 
+					{
+					    log ("Found " + dName + " in dimmers. DNI:  " + dimmers[index].deviceNetworkId, "INFO")
+						device=dimmers[index]
+						if (topic[3]=="onoff") onoffDevice=true
+						else if (topic[3]=="dim") dimDevice=true
+						devType="system"
+					}
+					index++
+				}
+		}
+		
+	if (device==null) 	log ("Can't find " + deviceID + " " + dName + " device by DNI","ERROR")
+	//}
+	if (devType!='?'){	
+		log ("Types are dim:" + dimDevice + " onoff:"+ onoffDevice + " type:"+ devType,"DEBUG")
+		if (onoffDevice)  
+		{
+		log ("Handling as onoff", "DEBUG")
+			if (devType=="map") {
+				if (evt.value==LookupID.stateOFF) device.toOFF()
+				else if (evt.value==LookupID.stateON) device.toON()
+			}
+			else {  // will have to surmise state required
+				log ("Surmising required state [" +evt.value+"] for " + device.name,"DEBUG")
+				OnValues="on,true,yes,1"  
+				OffValues="off,false,no,0"
+				if (OnValues.contains(evt.value.toLowerCase()))
+				{
+					if (devType == "system") device.on() else device.toON()
+				}
+				else if (OffValues.contains(evt.value.toLowerCase()))
+				{
+					if (devType == "system") device.off() else device.toOFF()
+				}
+				else log ("Unknown state value " + evt.value +" - need to add to lookup","WARN")	
+			}
+		}
+	
+	
+		if (dimDevice) {
+			//if (devType=="dim") {
+				 log ("Handling as dim", "DEBUG")
+				 try {  // see if its numeric  // LookupLevel should be valid
+					float convertedNumber = Float.parseFloat(evt.value)  // TODO messy and repeatedly used
+
+					if (LookupLevel == null)
+					 {
+						 if (devType=="system"){
+							 device.setLevel (evt.value.toInteger(),0)
+						 }
+						 else log ("There's no corresponding MaxValue for " + data.topic, "WARN")
+					 }
+					else {
+						convertedNumber = convertedNumber * (100/Float.parseFloat(LookupLevel.toString()))  //think this will work for 1.0 too
+						intLevel = convertedNumber = convertedNumber.round()
+						adjLevel=intLevel.toString()
+						log ( " The numeric payload for " + device.name + " was converted from " + evt.value + " to " + adjLevel, "DEBUG")
+						device.toLevel(adjLevel,1)
+					}
+			}
+			catch (Exception e1) {
+				log ("This payload wasnt numeric  " + evt.value + "  " + evt.data + "  " + e1, "WARN")
+				}
+			//}
+		}
+		if (devType=="unknown") log ("Incoming MQTT message for unknown device "+deviceID,"ERROR")
+	}
+}
+
+
+//#######################################################################################################################################
+//############################   This section handles MQTT 'set' events/state changes and updates the devices   #########################
+//#######################################################################################################################################
+
+def onoffEvent (evt) {
+	def data = parseJson(evt.data)
+    //log ("event data: ${data}", "INFO")
+	log ("Received an OnOff event from ${evt.value} turned ${data.status}", "TRACE")
+	child=getChildDevice("MQTT:homie_"+evt.value)  //TODO check this method is only for homie devices
+	if (child==null) {
+		//log ("getChild failed for " + evt.value, "WARN")
+		child=getChildDevice("MQTT:HA_"+evt.value)
+		if (child==null) {
+			//log ("getChild failed for " + evt.value, "WARN")
+		index=0	
+		for (String item : settings?.adhoc) {
+			if (adhoc[index].deviceNetworkId == "MQTT:Internal "+ data.topic){
+				log ("FOUND (OnOff) matches " + item +" " + index,"DEBUG")
+				// TODO quit loop when found
+				//child=item
+				child=adhoc[index]  // this isn't actually a child it is a real 'adhoc' device
+				//exit  // return might be bad
+			}
+				index++
+		}
+			if (child==null) {
+				//log ("Device not enabled: "+ evt.value,"TRACE")
+				return
+			}
+		}	
+	}	
+	log  ("Got " + child, "TRACE")
+	currStatus=data.status
+	isStatus="off"
+	if (currStatus == "off") child.setStateType ("off","on")
+	else if (currStatus == "off") child.setStateType ("off","on")
+	else if (currStatus == "Off") child.setStateType ("Off","On")
+	else if (currStatus == "OFF") child.setStateType ("OFF","ON")
+	else if (currStatus == "false") child.setStateType ("false","true")
+	else if (currStatus == "False") child.setStateType ("False","True")
+	else if (currStatus == "FALSE") child.setStateType ("FALSE","TRUE")
+	else if (currStatus == "0") child.setStateType ("0","1")
+	else 
+	{
+	isStatus = 'on'
+	if (currStatus == "on") child.setStateType ("off","on")
+	else if (currStatus == "On") child.setStateType ("off","on")
+	else if (currStatus == "On") child.setStateType ("Off","On")
+	else if (currStatus == "ON") child.setStateType ("OFF","ON")
+	else if (currStatus == "true") child.setStateType ("false","true")
+	else if (currStatus == "True") child.setStateType ("False","True")
+	else if (currStatus == "TRUE") child.setStateType ("FALSE","TRUE")
+	else if (currStatus == "1") child.setStateType ("0","1")
+	else isStatus = "#"
+	}
+	if (currStatus == "unavailable") isStatus="?"
+		if (isStatus=="off") {
+			//child.off
+			child.toOFF()
+			//log ("OFF "+ child, "DEBUG")
+		}
+		else if (isStatus=="on"){
+			//child.on()
+			child.toON()
+			//log ("ON "+ child, "DEBUG")
+		}
+		else if (isStatus=="?"){  // This is likely a Philips Hue bulb that is powered off
+			log ("Reported OnOff status was ${currStatus} for device ${evt.value}","INFO")
+		}
+	    else log("Bad reported OnOff status... was ${currStatus} for device ${evt.value}","WARN")
+}
+
+def dimEvent (evt) {
+	def data = parseJson(evt.data)
+	//data.state is the same as data.payload[0] 
+    //log ("event data: ${data}", "INFO")
+	log ("Received a dim event from ${evt.value} level ${data.level}", "TRACE")
+	child=getChildDevice("MQTT:homie_"+evt.value) 
+	if (child==null) {
+		//log ("getChild failed for " + evt.value, "WARN")
+		child=getChildDevice("MQTT:HA_"+evt.value)
+		// now check adhoc virtual devices
+		index=0	
+		for (String item : settings?.adhoc) {
+			if (adhoc[index].deviceNetworkId == "MQTT:Internal "+ data.topic){
+				log ("FOUND (Dim) matches " + item +" " + index,"DEBUG")
+				// TODO quit loop when found or match all - currently match last
+				child=adhoc[index]  // this isnt actually a child it is a real adhoc device
+			}
+				index++
+		}
+			if (child==null) return	
+	}	
+	//log ("Setting Child dim level to ${data.level}", "INFO")
+	child.toLevel(data.level,1)
+}
+
+def sensorEvent(evt) {
+	def data = parseJson(evt.data)
+    //log ("event data: ${data}", "INFO")
+	//log ("Received a dim event from ${evt.value} level ${data.level}", "INFO")
+	child=getChildDevice("MQTT:homie_"+evt.value)
+	if (child==null) {
+		//log ("getChild failed for " + evt.value, "WARN")
+		child=getChildDevice("MQTT:HA_"+evt.value)		
+		if (child==null) {
+			//log ("getChild failed for " + evt.value, "WARN")
+			return
+		}	
+	}	
+	child.setValue(data.status)
+}
+
+def binarySensorEvent(evt) {
+	def data = parseJson(evt.data)
+    //log ("event data: ${data}", "INFO")
+	log ("Received a binary sensor event from ${evt.value}  state is   ${data.status}", "TRACE")
+	child=getChildDevice("MQTT:homie_"+evt.value)
+	if (child==null) {
+		//log ("getChild failed for " + evt.value, "WARN")
+		child=getChildDevice("MQTT:HA_"+evt.value)		
+		if (child==null) {
+			log ("getChild failed for " + evt.value + "   not enabled ?", "DEBUG")
+			return
+		}	
+	}	
+	//log ("Checking how I handle a ${data.status} message for ${evt.value} of type ${child.typeName} ??", "DEBUG")
+	typeName=child.typeName
+		
+			if (data.status=="off") {
+				if (typeName=="Virtual Motion Sensor") child.inactive()					
+																			/*
+																			// active/inactive setTemperature
+																			// motion : inactive
+																			// temperature : 21.12
+																			*/		
+				
+				if (typeName=="Virtual Switch") child.off()   						
+																			// on/off
+																			// switch : on
+
+				if (typeName=="Virtual Contact Sensor") child.close()   	
+																			// open/close
+					
+
+				if (typeName=="Virtual Presence") child.departed()  						
+																			/*
+																			// arrived/departed     
+																			// presence : present
+																		    */
+
+				if (typeName=="Virtual Omni Sensor") child.motionInactive()  //lots 
+																			/*
+																			COClear/CODetected accelerationActive/accelerationInactive arrived/departed close/open smokeClear/smokeDetected dry/wet
+																			motionActive/motionInactive setIlluminance setRelativeHumidity setTemperature setCarbonDioxide 
+																			acceleration : inactive
+																			carbonDioxide : 350
+																			carbonMonoxide : clear
+																			contact : closed
+																			humidity : 35
+																			illuminance : 50
+																			motion : inactive
+																			presence : present
+																			smoke : clear
+																			temperature : 70
+																			water : dry
+																			*/
+
+				if (typeName=="Virtual Multi Sensor") child.inactive() 
+																			/*
+																			active/inactive open/close setTemperature  
+																			contact : closed
+																			temperature : 21.12
+																			acceleration : inactive
+																			*/ 
+
+
+			}	
+			else if (data.status=="on"){
+				if (typeName=="Virtual Motion Sensor") child.active()
+				if (typeName=="Virtual Switch") child.on()
+				if (typeName=="Virtual Contact Sensor") child.open()
+				if (typeName=="Virtual Presence") child.arrived()
+				if (typeName=="Virtual Omni Sensor") child.motionActive()
+				if (typeName=="Virtual Multi Sensor") child.active()
+		}
+	
+	//child.setValue(data.status)
+}
+
+def groupEvent(evt) {
+//TODO Half done BUGGY ?
+	def data = parseJson(evt.data)
+    //log ("group: event data: ${data}", "TRACE")
+	log ("Received an OnOff event from ${evt.value} turned ${data.status}", "TRACE")
+	child=getChildDevice("MQTT:HA_"+evt.value)  //TODO check this method is only for homie devices
+	if (child==null) {
+		log ("getChild failed for " + evt.value, "WARN")
+		child=getChildDevice("MQTT:HA_"+evt.value)
+		if (child==null) {
+			//log ("getChild failed for " + evt.value, "WARN")
+		index=0	
+		for (String item : settings?.adhoc) {
+			if (adhoc[index].deviceNetworkId == "MQTT:Internal "+ data.topic){
+				log ("FOUND (OnOff) matches " + item +" " + index,"DEBUG")
+				// TODO quit loop when found
+				//child=item
+				child=adhoc[index]  // this isn't actually a child it is a real adhoc device
+				//exit  // return might be bad
+			}
+				index++
+		}
+			if (child==null) {
+				//log ("Device not enabled: "+ evt.value,"TRACE")
+				return
+			}
+		}	
+	}	
+	//log  ("Got " + child + " "+  data.Status, "TRACE")
+
+		if (data.status=="off") child.toOFF()  else if (data.status=="on") child.toON()
+}
+
+def inputBooleanEvent(evt) {   // TODO This is probably identical to 'group' above and can easily be combined
+//TODO Half done BUGGY ?
+	def data = parseJson(evt.data)
+    //log ("inputBoolean: event data: ${data}", "INFO")
+	log ("Received an OnOff event from ${evt.value} turned ${data.status}", "TRACE")
+	child=getChildDevice("MQTT:HA_"+evt.value)  //TODO check this method is only for homie devices
+	if (child==null) {
+		//log ("getChild failed for " + evt.value, "TRACE")
+		child=getChildDevice("MQTT:HA_"+evt.value)
+		if (child==null) {
+			//log ("getChild failed for " + evt.value, "WARN")
+		index=0	
+		for (String item : settings?.adhoc) {
+			if (adhoc[index].deviceNetworkId == "MQTT:Internal "+ data.topic){
+				log ("FOUND (OnOff) matches " + item +" " + index,"DEBUG")
+				// TODO quit loop when found
+				//child=item
+				child=adhoc[index]  // this isn't actually a child it is a real adhoc device
+				//exit  // return might be bad
+			}
+				index++
+		}
+			if (child==null) {
+				//log ("Device not enabled: "+ evt.value,"TRACE")
+				return
+			}
+		}	
+	}	
+	log  ("Got " + child + " "+  data.Status, "ERROR")
+
+		if (data.status=="off") {
+			//child.off()
+			child.toOFF()  // This is a real device so wont have toOFF - maybe need my virtual
+			log ("OFF "+ child, "ERROR")
+		}
+		else if (data.status=="on"){
+			//child.on()
+			child.toON()
+			log ("ON "+ child, "ERROR")
+		}
+}
+
+def HABinSensorType(evt) {
+	def data = parseJson(evt.data)
+	log  ("Received binary_sensor type event of ${data.type} from ${evt.value}","TRACE")
+}
+
+def sensorUOM(evt) {  // TODO unused in alpha2
+	def data = parseJson(evt.data)
+	child=getChildDevice("MQTT:homie_"+evt.value)
+	if (child==null) {
+		//log ("getChild failed for " + evt.value, "WARN")
+		child=getChildDevice("MQTT:HA_"+evt.value)
+		if (child==null) {
+			//log ("getChild failed for " + evt.value, "WARN")
+			return
+		}	
+	}		
+	unit = "°" //+data.label[7]  // TODO hack until I work out unicode 16 convert better \u00b0 
+
+	if (child.typeName=="MQTT Dimmer" || child.typeName=="MQTT Switch" ){  // only call for my device drivers
+	child.setPrefix("")
+	child.setSuffix(unit)
+	}
+}
+
+def cmdEvent (evt) {  // 'set' command from homie for a Hubitat or manual device via Hubitat basic 
+	// TODO This has value and data transposed in the two versions for discovered and adhoc .. tidy up
+	def data = parseJson(evt.data)
+	log ("MQTT set command received for " + evt.value + " " + data.cmd + " " + data.state,"INFO")
+	normName=evt.value
+	if (atomicState.nameMap[normName]==null){
+		log ("No name map for ${normName} so assume Hubitat basic topic", "INFO") // could check from data.topic.topic[0]
+		matchName=normName
+			 }
+		else matchName=atomicState.nameMap[normName]	
+	if (data.cmd=="onoff" || data.cmd=="switch") {  // TODO convert to select / case   'switch' comes from RGB devices
+		MQTTswitches = (settings?.switches)
+		log ("Switch Lookup for  "+  evt.value + " is " + matchName + " [" + atomicState.nameMap[index] +"] ","TRACE")
+		MQTTswitches.each { MQTTswitches ->  // This is awful - looping through - do it the other way		
+			if (MQTTswitches.displayName==matchName){	
+				// DUPLICATED TODO combine this as one method for all
+				log ("Surmising required state [" +data.state+"] for " + evt.value,"DEBUG")
+				OnValues="on,true,yes,1"  
+				OffValues="off,false,no,0"
+				if (OnValues.contains(data.state.toLowerCase()))
+				{
+					//if (devType == "system") 
+					MQTTswitches.on()  // think can only be a system type here
+					//else device.toON()
+				}
+				else if (OffValues.contains(data.state.toLowerCase()))
+				{
+					//if (devType == "system") 
+					MQTTswitches.off() // think can only be a system type here
+					//else device.toOFF()
+				}
+				else log ("Unknown state value " + data.state +" - need to add to lookup","WARN")	
+			}
+		}	
+					
+		MQTTdimmers = (settings?.dimmers)
+		log ("Dimmer Lookup for  "+  evt.value + " is " + matchName + " [" + atomicState.nameMap[index] +"] ","TRACE")
+		MQTTdimmers.each { MQTTdimmers ->  // This is awful - looping through - do it the other way
+			if (MQTTdimmers.displayName==matchName){
+			// TODO combine this below as one method for all
+				log ("Surmising required state [" +data.state+"] for " + evt.value,"DEBUG")
+				OnValues="on,true,yes,1"  
+				OffValues="off,false,no,0"
+				if (OnValues.contains(data.state.toLowerCase()))
+				{
+					//if (devType == "system") 
+					MQTTdimmers.on()  // think can only be a system type here
+					//else device.toON()
+				}
+				else if (OffValues.contains(data.state.toLowerCase()))
+				{
+					//if (devType == "system") 
+					MQTTdimmers.off() // think can only be a system type here
+					//else device.toOFF()
+				}
+				else log ("Unknown state value " + data.state +" - need to add to lookup","WARN")
+			}
+		}
+		
+		
+		MQTTRGB = (settings?.colour)
+		// log ("ColourC Lookup for  "+  evt.value + " is " + matchName + " [" + atomicState.nameMap[index] +"] ","TRACE")
+		MQTTRGB.each { MQTTRGB ->  // This is awful - looping through - do it the other way
+		if (MQTTRGB.displayName==matchName){
+			// TODO combine this below as one method for all
+				log ("Surmising required state [" +data.state+"] for " + evt.value,"DEBUG")
+				OnValues="on,true,yes,1"  
+				OffValues="off,false,no,0"
+				if (OnValues.contains(data.state.toLowerCase()))
+				{
+					//if (devType == "system") 
+					MQTTRGB.on()  // think can only be a system type here
+					//else device.toON()
+				}
+				else if (OffValues.contains(data.state.toLowerCase()))
+				{
+					//if (devType == "system") 
+					MQTTRGB.off() // think can only be a system type here
+					//else device.toOFF()
+				}
+				else log ("Unknown state value " + data.state +" - need to add to lookup","WARN")
+			}
+		}
+/* TODO Think this can be ignore FTTB as it is a near duplicate in terms of lookup	
+		MQTTRGB = (settings?.colourT)
+    	//log ("ColourT Lookup for  "+  evt.value + " is " + matchName + " [" + atomicState.nameMap[index] +"] ","TRACE")
+		MQTTRGB.each { MQTTRGB ->  // This is awful - looping through - do it the other way
+		if (MQTTRGB.displayName==matchName){
+			// TODO combine this below as one method for all
+				log ("Surmising required state [" +data.state+"] for " + evt.value,"DEBUG")
+				OnValues="on,true,yes,1"  
+				OffValues="off,false,no,0"
+				if (OnValues.contains(data.state.toLowerCase()))
+				{
+					//if (devType == "system") 
+					MQTTRGB.on()  // think can only be a system type here
+					//else device.toON()
+				}
+				else if (OffValues.contains(data.state.toLowerCase()))
+				{
+					//if (devType == "system") 
+					MQTTRGB.off() // think can only be a system type here
+					//else device.toOFF()
+				}
+				else log ("Unknown state value " + data.state +" - need to add to lookup","WARN")
+			}
+		}
+	*/		
+	}
+	
+	else if (data.cmd=="dim") {
+		intLevel=data.state.toInteger()
+		if ((0 <= intLevel) && (intLevel <= 100))
+		{
+			
+			//log ("Dimmer Lookup for  "+  evt.value + " is " + matchName + " [" + atomicState.nameMap[index] +"] ","TRACE")
+			MQTTdimmers = (settings?.dimmers)
+			MQTTdimmers.each { MQTTdimmers ->  // This is awful - looping through - do it the other way
+				if (MQTTdimmers.displayName==matchName){
+					log ("Found " + MQTTdimmers.displayName, "TRACE")
+					MQTTdimmers.setLevel(intLevel,1)
+				}
+			}
+			adhoc=(settings?.adhoc) 
+			adhoc.each { adhoc ->
+				if (adhoc.displayName==matchName){ 
+				adhoc.setLevel(intLevel,1)
+				}
+			}
+			MQTTRGB = (settings?.colour)
+			MQTTRGB.each { MQTTRGB ->
+				if (MQTTRGB.displayName==matchName){
+					MQTTRGB.setLevel(intLevel,1)
+				}
+			}
+		}		
+	}
+	
+	else if (data.cmd=="color") {
+		
+			MQTTRGB = (settings?.colour)
+			MQTTRGB.each { MQTTRGB ->
+				if (MQTTRGB.displayName==matchName){ 
+					float Rtemp= Float.parseFloat(data.state)/3.6
+					int hue = Math.round (Rtemp)  // 0-360
+					if (data.payload.size()>1) {
+						Rtemp= Float.parseFloat(data.payload[1])
+						int sat = Math.round (Rtemp)
+						MQTTRGB.setSaturation(sat)  // 0-100
+					}
+					MQTTRGB.setHue(hue)
+
+				}
+			}
+		
+	}
+	
+		else if (data.cmd=="hsv") {
+			MQTTRGB = (settings?.colour)
+			MQTTRGB.each { MQTTRGB ->
+				if (MQTTRGB.displayName==matchName){
+					// These all seem to be 0 to 100 
+					MQTTRGB.setSaturation(data.payload[1].toInteger())
+					MQTTRGB.setHue(data.payload[0].toInteger())
+					MQTTRGB.setLevel(data.payload[2].toInteger())
+				}
+			}
+	}
+	
+	else if (data.cmd=="hue") {
+			MQTTRGB = (settings?.colour)
+			MQTTRGB.each { MQTTRGB ->
+				if (MQTTRGB.displayName==matchName){
+					MQTTRGB.setHue(data.payload[0].toInteger())
+				}
+			}
+	}
+	else if (data.cmd=="level") {  // currently only searching colour bulbs for this as it's a RGB event
+			MQTTRGB = (settings?.colour)
+			MQTTRGB.each { MQTTRGB ->
+				if (MQTTRGB.displayName==matchName){
+					MQTTRGB.setLevel(data.payload[0].toInteger())
+				}
+			}
+	}
+		else if (data.cmd=="saturation") {
+			MQTTRGB = (settings?.colour)
+			MQTTRGB.each { MQTTRGB ->
+				if (MQTTRGB.displayName==matchName){
+					MQTTRGB.setSaturation(data.payload[0].toInteger())
+				}
+			}
+	}
+	
+	else if (data.cmd=="colorTemperature") { // This is from the Hubitat Basic topic
+			MQTTRGB = (settings?.colour)
+			MQTTRGB.each { MQTTRGB ->
+				if (MQTTRGB.displayName==matchName){
+					MQTTRGB.setColorTemperature (data.state.toInteger())	
+				}
+			}
+	}
+		else if (data.cmd=="color-temperature") {  // This is from the homie topic
+			MQTTRGB = (settings?.colour)
+			MQTTRGB.each { MQTTRGB ->
+				if (MQTTRGB.displayName==matchName){
+					// The control value needs to be between 0 (7000K) and 500 (2000)
+					// it is reported back as 2000-7000 though so in Hubitat basic should we support this ?? Both come in here via 'set' need to split
+					int colTemp= 7000 + ((int) data.state.toInteger()*-10)  // TODO pure guesswork here need to look up why 0-500 from HA
+					log ("Requested colour temperature of " + colTemp, "ERROR")
+					MQTTRGB.setColorTemperature (colTemp)
+					colTopic=data.topic.topic.substring(0, data.topic.topic.length() - 4)  // TODO KLUDGE for time being
+					mqtt.publishMsg (colTopic,data.state,1,settings?.homieStatesPersist)   // UGH setting reported value to set value
+				}
+			}
+	}
+
+	else if (data.cmd=="battery"||data.cmd=="motion"||data.cmd=="temperature") {
+		log ("Trying to 'set' a sensor value ${data.cmd} for ${evt.value}", "WARN")
+		log ("   ... only 'onoff', 'dim', 'color' and 'color-temperature' are settable currently", "WARN")
+	}
+	
+	
+	else log ("Couldnt action command ${data.cmd} for ${evt.value}", "WARN")
+}
+
+def extractInt( String input ) {
+  return input.replaceAll("[^0-9]", "")
+}
+
+/*def mqttRX(evt) {
+	log ("${evt.name} ${evt.value}", "INFO")
+}*/
+
+//#######################################################################################################################################
+//############################   This section contains general utility nethods and the cerateChild() method     #########################
+//#######################################################################################################################################
+
+def normalize(name) {
+	//TODO research how to include NFD
+	//log ("Normalize: " + name + " >>> " + name.trim().toLowerCase().replaceAll(/[^\w-]/,"_").replaceAll(/[-]/,'_'),"TRACE")
+	return name ? name.trim().toLowerCase().replaceAll(/[^\w-]/,"-").replaceAll(/[_]/,'-') : undefined
+	//return name ? name.trim().toLowerCase().replaceAll(/[.*+?^${} ()|]/,"_").replaceAll(/[^a-z0-9_]/,""): undefined
+	//return name ? name.trim().toLowerCase().normalize("NFD").replace(/[ -]+/g, "_").replace(/[^a-z0-9_]/g, "") : undefined
+}
+
+def reNameDev(evt) { 
+	    dID=evt.value
+		child=getChildDevice(dID)
+	    if (child == null) {
+		   log ("reName: Child doesn't exist (no state or unsupported type ?) "+ evt.value + " " + evt.name , "TRACE")
+		   return
+	   }
+	def data = parseJson(evt.data)
+	child.label= data.label
+	log ("reNamed  ${evt.value} to ${data.label}" ,"TRACE")
+	} 
+
+def createChildDevice(name, type, system, friendlyName, dType='default') {
+	// friendlyname may not be available yet so name will have been passed and it will be renamed later in reNameDev()
+	log("CreateDevice called " + name + " " + type + " " + system + " " + friendlyName + "  :  " + dType,"TRACE")
+	if (name==null) return
+	//if (atomicState.started) return // TODO Stops creation of devices after timed startup has elapsed - but also stops ongoing incremental discovery.... decide which to use
+	devEnabled=false
+	def prefix = "MQTT:"
+	String enabledDevices=(settings?.HA_Lights) + ',' + (settings?.HA_Switches) + ',' + (settings?.Homie_dim) + "," + (settings?.Homie_onoff) + ','
+	if (system=="HA") {
+		if (settings?.HA_Switches != null)
+		{									   
+			if (settings?.HA_Switches.contains (name))
+			{
+				devEnabled=true
+				prefix="MQTT:HA_"
+			}
+		}
+		if (settings?.HA_Lights != null) {
+			if (settings?.HA_Lights.contains (name))
+			{
+				devEnabled=true
+				prefix="MQTT:HA_"
+			}
+		}
+		if (settings?.HA_Sensors != null) {
+			if (settings?.HA_Sensors.contains (name))
+			{
+				devEnabled=true
+				prefix="MQTT:HA_"
+			}
+		}
+		if (settings?.HA_BinarySensors != null) {
+			if (settings?.HA_BinarySensors.contains (name))
+			{
+				devEnabled=true
+				prefix="MQTT:HA_"
+			}
+		}
+		if (settings?.HA_Groups != null) {
+			if (settings?.HA_Groups.contains (name))
+			{
+				devEnabled=true
+				prefix="MQTT:HA_"
+			}
+		}
+	}
+	else if (system=="homie")
+	{
+		if (settings?.Homie_onoff != null)
+		{									   
+			if (settings?.Homie_onoff.contains (name))
+			{
+				devEnabled=true
+				prefix="MQTT:homie_"
+			}
+		}
+		if (settings?.Homie_dim != null) {
+			if (settings?.Homie_dim.contains (name))
+			{
+				devEnabled=true
+				prefix="MQTT:homie_"
+			}
+		}
+		if (settings?.Homie_sensor != null) {
+			if (settings?.Homie_sensor.contains (name))
+			{
+				devEnabled=true
+				prefix="MQTT:homie_"
+			}
+		}
+		if (settings?.Homie_binarySensor != null) {
+			if (settings?.Homie_binarySensor.contains (name))
+			{
+				devEnabled=true
+				prefix="MQTT:homie_"
+			}
+		}
+	}
+	else if (system=='internal') {
+		devEnabled=true
+		prefix="MQTT:Internal_"
+	}
+
+	if (!devEnabled)
+	{
+		log ("["+system+"] Create blocked for " + name, "TRACE")
+		return
+	}
+	else log ("["+system+"] Create OK for " + name + " : " + dType, "TRACE")
+	
+	child=getChildDevice(prefix+name) 
+	if (child != null) 
+		{
+			// dont expect this if mqttRemoveDevices was true
+			// TODO decide ..this gets fired (but ignored) on every change of state update - can we eliminate that without breaking incremental discovery ?
+			// no but could use ...  if(atomicState.started)
+			if (!atomicState.started && (settings?.mqttRemoveDevices == true)) log ("Child already exists " + prefix+name, "TRACE")
+			return
+		}
+	def nameSpace="ukusa"
+	if (type=='onoff') devType='MQTT Switch'
+	else if (type=='dim') devType='MQTT Dimmer'
+	else if (type=='group') devType='MQTT Switch'  // TODO check if a HA group can have a level ?
+	else if (type=='inputBoolean') devType='MQTT Switch'
+	else if (type=='sensor') {
+		
+		    // again loads have no device_type e.g. arduino_thingshield_alarm  backdoor_x_coordinate  Alexa Sonos
+/*
+battery
+illuminance
+humidity
+temperature
+?? pressure ??
+*/
+		devType= "Virtual Omni Sensor"
+		nameSpace="hubitat"
+		//devType= "MQTT Text"  // TODO - map to specific capabilities using xType rather than a general text device - build custom attribute for Dashboard attribute template
+		}
+	else if (type=='binary_sensor') {
+/*
+  (some of these are not boolean)
+  Acceleration Sensor
+  Button
+  Contact Sensor
+  Dimmer
+  Fan Controller
+  Garage Door Controller
+  Lock
+  Motion Sensor
+  Multi Sensor
+  Omni Sensor
+  Presence
+  RGB Light
+  RGBW Light
+  Switch
+  Temperature Sensor
+  Thermostat
+  audioVolume
+*/
+		
+		nameSpace="hubitat"
+		if (dType=="default") devType= "Virtual Omni Sensor"
+			// Other binary sensor examples include...
+			// connectivity
+			// problem (eg comfort_alarm_tamper)
+			// '   '  occasionally a binary_sensor includes no device_class (e.g. C-Bus Gateway IP reachable) so this would never get created
+		// device_type has "" around it - maybe strip in the client device driver
+		else if (dType=="opening") devType= "Virtual Contact Sensor"
+		else if (dType=="motion") devType= "Virtual Motion Sensor"
+		else if (dType=="moving") devType= "Virtual Acceleration Sensor"
+		else if (dType=="problem") devType= "Virtual Omni Sensor"  //TODO
+		else if (dType=="presence") devType= "Virtual Presence"
+		else if (dType=="moisture") devType= "Virtual Multi Sensor"  // check as overly complex
+		else if (dType=="sound") devType= "Virtual audioVolume"  // check think this is not boolean
+		else log (name + " found no device type mapping for " + dType + devType,"ERROR")
+	}
+	
+	
+	// ######  This is where to add additional device types and their matching driver ######
+			 
+	else {
+			log ("Skipping creating device " + name +" as no type yet for " + type, "WARN")
+			return
+	}
+			
+		//log ("Creating type " + type + " as  + ("+ dType +") " + devType + " named MQTT:" + name + " " + friendlyName, "DEBUG")
+		//mqtt.createChild(name)  // This was to create device as driver child
+		def pfix = ""
+
+	
+		try {   
+				childDevice = addChildDevice(nameSpace, devType, prefix+name, null,[completedSetup: true, label: pfix + friendlyName])
+				child=getChildDevice(prefix+name)  //hmm seems childDevice is not a device object 
+			    if (child == null) log ("Child was never created" + prefix+name , "ERROR")
+			    else log ("Created Child device with label "+ child.label,"INFO")
+			atomicState.count++			
+			childrenCount = getChildDevices().size()		
+				if (system=='homie'){
+					child.setStateTopic('homie/'+atomicState.homie+'/'+name+'/onoff')
+					child.setStateCmdTopic('homie/'+atomicState.homie+'/'+name+'/onoff/set')
+				}
+				else if (system=="HA"){
+					if (type == 'sensor') {  // no command topic
+						child.setStateTopic(atomicState.HA+'/sensor/'+name+'/state')
+					}
+					else if (type == 'group') {
+						child.setStateTopic(atomicState.HA+'/group/'+name+'/state')
+						child.setStateCmdTopic(atomicState.HA+'/group/'+name+'/state/cmd')
+					}
+					else {
+						child.setStateTopic(atomicState.HA+'/switch/'+name+'/state')
+						child.setStateCmdTopic(atomicState.HA+'/switch/'+name+'/state/cmd')
+						 }
+				}
+				else if (system=="internal"){  // was setting state topics but now not child devices
+				}
+				if (type=='dim') {
+					if (system=="homie"){
+						child.setLevelTopic('homie/'+atomicState.homie+'/'+name+'/dim')
+						child.setLevelCmdTopic('homie/'+atomicState.homie+'/'+name+'/dim/set')
+						child.setMaxBrightness('1')
+					}
+					else if (system=="HA"){
+						child.setStateTopic(atomicState.HA+'/light/'+name+'/state')  //overwrite the switch entries
+						child.setStateCmdTopic(atomicState.HA+'/light/'+name+'/state/cmd')	 
+						child.setLevelTopic(atomicState.HA+'/light/'+name+'/brightness') //0-255 in HA ?
+						child.setLevelCmdTopic(atomicState.HA+'/light/'+name+'/brightness/cmd')
+						child.setMaxBrightness('255') 
+					}
+					if (type=='sensor') {
+						log  ("############ Problem child is " + child.device.typeName, "ERROR")
+						if (child.typeName=="MQTT Dimmer" || child.typeName=="MQTT Switch" ){  // think must be my driver here
+						child.setValue ("")  //TODO no good if not my device driver
+					}
+					}
+			}
+			child.setType(system)  // identify as a discovered device
+		} catch(Exception ex) {
+			log ("addChild/topics failed for " +name + " " +(ex.toString()), "ERROR")
+		}
+	  advertiseChild()
+}
+
+def advertiseChild(){
+	return  // These will be 'discovered' devices so not onwardly advertising them or publishing states (may revisit again later)
+	log ("### TODO ####   Update MQTT with states for ${name} and also advertise to HA","WARN")
+	//HADiscoveryAdvertise()
+}
+
+def devSummary()
+{
+	log ("==================================================", "INFO")
+	log ("    ${atomicState.MQTTOnOffDevices} Hubitat switch devices enabled on MQTT", "INFO")
+	log ("    ${atomicState.MQTTDimDevices} Hubitat dimmer devices enabled on MQTT", "INFO")
+	log ("    ${atomicState.adhocDevices} Hubitat virtual devices synched to MQTT", "INFO")
+	log ("    ${atomicState.MQTTRGBc} Hubitat RGB control devices synched to MQTT", "INFO")
+	log ("    ${atomicState.MQTTRGBt} Hubitat RGB temperature devices synched to MQTT", "INFO")
+	if (settings?.homieDiscovery){
+		log ("    Discovered ${atomicState.onoffDevices.size()} homie onoff devices", "INFO")
+        log ("    Discovered ${atomicState.dimDevices.size()} homie dim devices", "INFO")
+		log ("    Discovered ${atomicState.sensorDevices.size()} homie sensor devices", "INFO")
+	}
+	if (settings?.HAStatestream) {
+		log ("    Discovered ${atomicState.HASwitchDevices.size()} HA switch devices", "INFO")
+		log ("    Discovered ${atomicState.HALightDevices.size()} HA light devices", "INFO")
+		log ("    Discovered ${atomicState.HASensorDevices.size()} HA sensor devices", "INFO")
+		log ("    Discovered ${atomicState.HABinarySensorDevices.size()} HA binary sensor devices", "INFO")
+		log ("    Discovered ${atomicState.HAInputBooleanDevices.size()} HA input boolean devices", "INFO")
+		log ("    Discovered ${atomicState.HAGroupDevices.size()} HA groups", "INFO")
+	}
+	log ("================== Startup complete ==================", "INFO")
+	atomicState.started=true
+	if (settings?.homiePublish) mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$state','ready',1,true) 
+}
+
+def clearDevices()
+{
+	 atomicState.onoffDevices=[]
+	 atomicState.dimDevices=[]
+}
+
+def sendPayload(topic,payload)
+{
+	if (payload==null) {
+		log ("Null payload for topic " + topic, "WARN")
+		return
+	}
+	if (topic==null) {
+		log ("Null topic for payload " + payload, "WARN")
+		return
+	}
+	log ("Send MQTT " + topic + " " + payload, "TRACE")
+	mqtt.publishMsg (topic,payload,1,settings?.homieStatesPersist)
+}
+
+/*
+
+DONE:
+Preliminary customisation for onoff vs switch cmd set etc
+Fixed set support in Hubitat topics (colour, dimmer, onoff)
+Bugfixes in count
+Startup speed tweaks (still to improve based on # devices)
+Fixed HA control
+Fixed erratic UI popup options
+Fixed alphabetic list sort
+Expanded discovery from statestream 
+Sensors display units in HA discovery
+
+TODO:
+Errors still in omni and multi driver - and sensor devices into HE
+Sort HADiscovery timing relative state reporting ~ semi OK now
+States before discovery
+Sensors check over  
+Ongoing .. customisation of topic names/states
+Review TODOs in code
+Color hsv not settable from Hubitat topic
+
+
+ISSUES:
+Not removing devices when disabled
+Currently adding devices to publish from HE > MQTT needs restart of app to add to HA discovery and state announcement on MQTT
+(May be able to achieve this without restart)
+colour temp not sent to HA
+unicode 16 support for sensor units
+Identify virtual devices to block cascades
+Filter out entries in dropdowns so that HE virtual devices don't show
+maxLevels with decimal points are not handled completely. This may impact homie discovery and scaling of level devices
+No current recovery after an MQTT disconnect although have never seen one. Subscriptions are lost and the app needs restarting.
+Need to consider automatic restart or reconnect with a retained list of all subs.
+
+FUTURE:
+Support multiple homie devices
+Support multiple HA's
+HE incoming HA discovery ...? Don't support ?
+
+*/
+
+
+
+
+
+
+
+
+
