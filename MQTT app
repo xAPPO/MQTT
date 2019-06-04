@@ -1,6 +1,9 @@
 /*
 
   Copyright Kevin Hawkins 2019     apps@ukusa.co.uk
+  
+  Currently no part of this code may be copied, redistributed, altered or used in any way without my express written/email permission
+  It may be installed for the express purpose of testing this code whilst in pre release
 
   Logging code was adapted from Eric Vitale's ST LIFX application, with thanks.  Copyright 2016 ericvitale@gmail.com
 
