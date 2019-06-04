@@ -4,12 +4,14 @@ MQTT client for Hubitat
 
 ################     WORK IN PROGRESS  - AT ANY GIVEN TIME THIS MAY BE BROKEN - ################
 
-NB alpha3 prerelease 7 is currently here
+This is currently alpha3a
 
-NO SUPPORT ON THIS VERSION and do NOT discuss on the Hubitat community
+NO SUPPORT ON THIS VERSION and do NOT discuss on the Hubitat community.
 
-Release notes for pre7  alpha3  
-3rd June 2019
+The licence for alpha3 has been updated to be restrictive whilst in testing.  I intend the final version to be under a much less restrictive licence although it will likely require my express written permission to publish any derivate code and no commercial offering will be allowed.
+
+Release notes for alpha3a 
+4th June 2019
 
 
 # Features
