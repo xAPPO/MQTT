@@ -36,7 +36,8 @@ e) Enable automatic discovery and selected inclusion of Hubitat devices* and sen
 8) More complete support for homie3 specification from Hubitat - enough so openHAB# discovery is happy. [DONE]
 9) Support multiple MQTT brokers (considering)
 
-  #I have not yet tried openHAB homie3 discovery but I suspect it will not work currently.  You will need at least openHAB 2.5 milestone 1 build, maybe later, and for various stability reasons I can't recommend you upgrade to that - and definately not post milestone 1 builds.  
+  #I have not yet tried openHAB homie3 discovery but I suspect it may not work currently.  You will need at least openHAB 2.5 milestone 1 build, maybe later, and for various stability reasons I can't recommend you upgrade to that - and definately not post milestone 1 builds. This is an openHAB issue rather than this app.  
+  #Update - I gather openHAB 2.5M2 (milestone 2) is close to being released although it may still be a little fragile. Huge changes have happened in OH between 2.5M1 and 2.5M2 so that is understandable. I look forward to seeing how my app works with OH 2.5M2.
 
 
 # Instructions: 
