@@ -22,6 +22,8 @@ d) Enable automatic discovery and selected inclusion of devices* and sensors usi
 
 e) Enable automatic discovery and selected inclusion of Hubitat devices* and sensors into Home Assistant using the HA MQTT Discovery protocol.
 
+f) Athoms' Homey controller also supports MQTT and the homie3 protocol. They work really well together automatically discovering each others devices and enabling realtime synchronisation and control between the controllers. Two HE's could work this way too but HubConnect is probably an easier option.  HubConnect virtual devices of course work with this MQTT app too.
+
 *N.B.This version currently supports 'switch' (onoff), 'switchLevel' (dim) colour and sensor capabilities only - but will be expanded to include others.  Sensors are still a work in progress.
 
 # Future Features:
