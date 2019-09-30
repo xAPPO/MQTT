@@ -13,9 +13,9 @@
   Logging code was adapted from Eric Vitale's ST LIFX application, with thanks.  Copyright 2016 ericvitale@gmail.com
   Lock code contributed by Casey
 
-  Support via Hubitat community alpha4 private thread   
+  Support via Hubitat community alpha4 thread   
 
-	- please do not hassle Hubitat with any support Q's as their client is still in beta release
+	- please do not hassle Hubitat with any support Q's as their client is an unsupported alpha release
 
 */
 
@@ -57,7 +57,7 @@ preferences {  // can't use atomicState vars in this section
                 input "batterysensors", "capability.battery", multiple: true, required: false, title: "<b>Battery sensors</b>", submitOnChange: false
                 input "bulbs", "capability.bulb", multiple: true, required: false, title: "<b>Bulbs [TBA]</b>", submitOnChange: false  
                 //input "buttons", "capability.button", multiple: true, required: false, title: "<b>Buttons [TBA]</b>", submitOnChange: false  
-                input "buttonsHold", "capability.holdableButton", multiple: true, required: false, title: "<b>Buttons holdable [TBA]</b>", submitOnChange: false
+                //input "buttonsHold", "capability.holdableButton", multiple: true, required: false, title: "<b>Buttons holdable [TBA]</b>", submitOnChange: false
                 input "buttonsPush", "capability.pushableButton", multiple: true, required: false, title: "<b>Buttons pushable [TBA]</b>", submitOnChange: false 
                 //input "buttonsRelease", "capability.releaseableButton", multiple: true, required: false, title: "<b>Buttons releaseable [TBA]</b>", submitOnChange: false
                 //input "buttonsDTap", "capability.doubleTapableButton", multiple: true, required: false, title: "<b>Buttons double tapable [TBA]</b>", submitOnChange: false
@@ -2461,7 +2461,7 @@ def colourDevices(evt, name=null,type=null, state=null) {
 			log ("Ignoring ${xTYPE} for  ${name.toString()} value ${state.toString()}","WARN")
 			return  // This is overwriting color attribute with #FFFFFF as currentColor() returns that so dont action
 		}
-        if (category=="unknown") log ("Need to handle ${xType} in RGB colour", "INFO")
+        if (category=="unknown") log ("Need to handle ${xType} in RGB colour", "DEBUG")
 		log ("Handling an ${xType} event - for ${name.toString()}", "TRACE")
 		
 
@@ -3100,7 +3100,7 @@ def dimEvent (evt) {
 		}
 			if (child==null) return	
 	}	
-	//log ("Setting Child dim level to ${data.level}", "INFO")
+	log ("Setting Child dim level to ${data.level}", "TRACE")
 	child.toLevel(data.level,1)   // Is this assuming I am using a virtual device ?? If so BUG
     child.setLevel(data.level,1)
 }
@@ -3490,7 +3490,7 @@ def cmdEvent (evt) {  // 'set' command from homie for a Hubitat or manual device
 		if ((0 <= intLevel)) //  && (intLevel <= 100)) //TODO Check removing this upper bound check doesn't break anything
 		{
 			
-			//log ("Dimmer Lookup for  "+  evt.value + " is " + matchName + " [" + atomicState.nameMap[index] +"] ","TRACE")
+			log ("Dimmer Lookup for  "+  evt.value + " is " + matchName + " [" + atomicState.nameMap[index] +"] ","TRACE")
 			MQTTdimmers = (settings?.dimmers)
 			MQTTdimmers.each {  // This is awful - looping through - do it the other way
 				if (it.displayName==matchName){
