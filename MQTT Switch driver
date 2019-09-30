@@ -1,6 +1,7 @@
+// Not licensed for redistribution in any form - see license readme
 metadata 
 {
-	definition(name: "MQTT Switch", namespace: "ukusa", author: "Kevin Hawkins")
+	definition(name: "MQTT Switch", namespace: "ukusa", author: "Kevin Hawkins",importUrl: "https://raw.githubusercontent.com/xAPPO/MQTT/alpha4/MQTT%20Switch%20driver")
 	{
 		capability "Switch"
 		//capability "Refresh"
@@ -12,9 +13,17 @@ metadata
 		command "on"
 		command "off"
 		command "toON"
+		command "initialize"
 		command "toOFF"
 		command "setStateType", ["String", "String"]
 		command "getStateTopics", ["String"]
+        command "upgrade"
+		
+		attribute "mqtt","string"
+		attribute "stateON", "string"
+		attribute "stateOFF", "string"
+        attribute "stateTopic", "strinG"
+        attribute "cmdTopic","string"
 	}
 }
 preferences{
@@ -34,25 +43,37 @@ def installed()
 	initialize()
 }
 
+
 def updated()
 {
 	if (state.type==null||state.type=="manual") 
 	if (settings?.TopicState != null) {
 		state.type = "manual"
-		state.stateTopic =settings?.TopicState
+		//state.stateTopic =settings?.TopicState
+        sendEvent(name: "stateTopic", value:settings?.TopicState,isStateChange: true)
 		device.deviceNetworkId = 'MQTT:Internal '+ settings?.TopicState
-	if (settings?.TopicCmd != null)   state.commandTopic=settings?.TopicCmd
-	if (settings?.StateON != null) state.stateTypeON = settings?.StateON
-	if (settings?.StateOFF != null) state.stateTypeOFF = settings?.StateOFF
-	if (settings?.TopicLevel != null) state.LevelTopic = settings?.StateON
-	if (settings?.TopicCmdLevelCmd != null) state.LevelCmdTopic = settings?.StateOFF
-	}
+        if (settings?.TopicCmd != null) {
+            //state.commandTopic=settings?.TopicCmd
+            sendEvent(name: "cmdTopic", value:settings?.TopicCmd,isStateChange: true)
+		if (settings?.StateON != null){
+			//state.stateTypeON = settings?.StateON
+			sendEvent(name: "stateON", value: settings?.StateON,isStateChange: true)
+		}
+		if (settings?.StateOFF != null){ 
+		//state.stateTypeOFF = settings?.StateOFF
+		sendEvent(name: "stateOFF", value: settings?.StateOFF,isStateChange: true)
+	    }
+	//if (settings?.TopicLevel != null) state.LevelTopic = settings?.StateON
+	//if (settings?.TopicCmdLevelCmd != null) state.LevelCmdTopic = settings?.StateOFF
+	    }
 	initialize()
+    }
 }
 
 def initialize()
 {
 	refresh()
+	sendEvent(name: "mqtt", value: "switch",isStateChange: true)
 }
 
 
@@ -64,15 +85,15 @@ def parse(String description)  // shouldn't get called
 def on() {
 	sendEvent(name: "switch", value: "on", isStateChange: true)
 	//parent.sendPayload(state.commandTopic,"true")
-	if (state.type=="manual") sendEvent(name: "changeState", value: state.stateTypeON,  data: [topic: state.commandTopic])
-	else parent.sendPayload(state.commandTopic, state.stateTypeON) 
+	if (state.type=="manual") sendEvent(name: "changeState", value: device.currentStateON,  data: [topic: device.currentCmdTopic],isStateChange: true)
+	else parent.sendPayload(device.currentCmdTopic, device.currentStateON) 
 }
 
 def off() {
 	sendEvent(name: "switch", value: "off", isStateChange: true)
 	//parent.sendPayload(state.commandTopic,"false")
-	if (state.type=="manual") sendEvent(name: "changeState", value: state.stateTypeOFF,  data: [topic: state.commandTopic])
-	else parent.sendPayload(state.commandTopic,state.stateTypeOFF) 
+	if (state.type=="manual") sendEvent(name: "changeState", value: device.currentStateOFF,  data: [topic:  device.currentCmdTopic],isStateChange: true)
+	else parent.sendPayload(state.commandTopic,device.currentStateOFF) 
 
 }
 
@@ -84,10 +105,12 @@ def toOFF() {  // avoids publish loop
 	sendEvent(name: "switch", value: "off", isStateChange: true)
 }
 
-def setStateType (stateOFF,stateON)
+def setStateType (stateOFF,stateON)  //  now write attributes directly ??
     {
-    state.stateTypeOFF = stateOFF
-    state.stateTypeON = stateON
+    //state.stateTypeOFF = stateOFF
+    //state.stateTypeON = stateON
+        sendEvent(name: "stateOFF", value: stateOFF,isStateChange: true)
+        sendEvent(name: "stateON", value:stateON,isStateChange: true)
 }
 
 def refresh()
@@ -99,12 +122,16 @@ def refresh()
 def getStateTopics()
 {
 	// needed to create DNI of device to match MQTT state changes
-	sendEvent([name: "topic", value: state.stateTopic])
+	sendEvent(name: "topic", value: device.currentStateTopic,isStateChange: true)
+    // This doesnt currently create a DNI entry should it ??  TODO CHECK
+    
+    log.error "GETSTATETOPICS() MUST DEPRECATE CALL TO THIS AS WILL BREAK"
 }
 
 def setStateTopic(String topic)
 {
-	state.stateTopic=topic
+	//state.stateTopic=topic
+    sendEvent(name: "stateTopic", value:topic,isStateChange: true)
 }
 
 def setType(String system)
@@ -114,7 +141,25 @@ def setType(String system)
 
 def setStateCmdTopic(String topic)
 {
-	state.commandTopic=topic
+	//state.commandTopic=topic
+    sendEvent(name: "cmdTopic", value:topic,isStateChange: true)
 }
+
+def upgrade() {
+  log.warn "MQTT switch upgrade already done"
+   return
+   sendEvent(name: "mqtt", value: "switch",isStateChange: true)
+   sendEvent(name: "stateTopic", value:state.stateTopic,isStateChange: true)
+       state.remove("stateTopic")
+   sendEvent(name: "cmdTopic", value:state.commandTopic,isStateChange: true)
+       state.remove("commandTopic")
+   sendEvent(name: "stateON", value:state.stateTypeON,isStateChange: true)
+       state.remove("stateTypeON")
+   sendEvent(name: "stateOFF", value:state.stateTypeOFF,isStateChange: true)
+       state.remove("stateTypeOFF")
+    log.warn "MQTT switch upgraded"
+}
+    
+
 
 
