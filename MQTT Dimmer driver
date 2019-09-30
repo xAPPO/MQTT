@@ -1,7 +1,7 @@
 // Not licensed for redistribution in any form - see license readme
 metadata 
 {
-	definition(name: "MQTT Dimmer", namespace: "ukusa", author: "Kevin Hawkins",importUrl: "https://raw.githubusercontent.com/xAPPO/MQTT/alpha4/MQTT%20Dimmer%20driver")
+	definition(name: "MQTT Dimmer", namespace: "ukusa", author: "Kevin Hawkins",importUrl: "https://raw.githubusercontent.com/xAPPO/MQTT/alpha/MQTT%20Dimmer")
 	{
 		capability "Switch"
 		capability "Switch Level"
@@ -11,7 +11,7 @@ metadata
 		attribute "mqtt","string"
 		attribute "stateON", "string"
 		attribute "stateOFF", "string"
-        attribute "stateTopic", "strinG"
+        attribute "stateTopic", "string"
         attribute "cmdTopic","string"
 		attribute "levelTopic", "strinG"
         attribute "levelCmdTopic","string"
@@ -52,7 +52,7 @@ preferences{
 		input name: "TopicCmdLevel", type: "text", title: "Level command topic", description: "", required: false, displayDuringSetup: true		
 		input name: "StateON", type: "text", title: "State on is..", description: "e.g. &nbsp ON &nbsp On &nbsp true &nbsp 1 &nbsp yes", required: false, displayDuringSetup: true
 		input name: "StateOFF", type: "text", title: "State off is..", description: "e.g. &nbsp OFF &nbsp Off &nbsp false &nbsp 0 &nbsp no", required: false, displayDuringSetup: true
-		input name: "maxBrightness", type: "number", title: "Maximum brightness level", description: " e.g. &nbsp 1.0 &nbsp 5.0  &nbsp 100 &nbsp 255", required: false, displayDuringSetup: true
+		input name: "maxBrightness", type: "string", title: "Maximum brightness level", description: " e.g. &nbsp 1.0 &nbsp 5.0  &nbsp 100 &nbsp 255", required: false, displayDuringSetup: true
 	}
 }
 
@@ -241,7 +241,8 @@ def setMaxBrightness(String maxBrightness)
 {
 	//log.debug "Max brightness set to " + maxBrightness
 	//state.maxBrightness=maxBrightness
-    sendEvent([name: "maxBrightness", value:device.currentMaxBrightness,isStateChange: true])
+    //sendEvent([name: "maxBrightness", value:device.currentMaxBrightness,isStateChange: true])
+    sendEvent([name: "maxBrightness", value:maxBrightness,isStateChange: true])
 }
 
 def setDeviceType(String devType)  // TODO maybe use this for homie HA etc
