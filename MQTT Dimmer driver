@@ -1,12 +1,22 @@
+// Not licensed for redistribution in any form - see license readme
 metadata 
 {
-	definition(name: "MQTT Dimmer", namespace: "ukusa", author: "Kevin Hawkins")
+	definition(name: "MQTT Dimmer", namespace: "ukusa", author: "Kevin Hawkins",importUrl: "https://raw.githubusercontent.com/xAPPO/MQTT/alpha4/MQTT%20Dimmer%20driver")
 	{
 		capability "Switch"
 		capability "Switch Level"
 		//capability "Refresh"
 		capability "Telnet"  // temporary kludge to filter devices need capability "MQTT"
-
+		
+		attribute "mqtt","string"
+		attribute "stateON", "string"
+		attribute "stateOFF", "string"
+        attribute "stateTopic", "strinG"
+        attribute "cmdTopic","string"
+		attribute "levelTopic", "strinG"
+        attribute "levelCmdTopic","string"
+        attribute "maxBrightness","string"
+        
 		command "setStateTopic", ["String"]
 		command "setStateCmdTopic", ["String"]
 		command "setLevelTopic", ["String"]
@@ -17,12 +27,15 @@ metadata
 		command "setDeviceType", ["String","String"]
 		command "toLevel"
 		command "getStateTopics", ["String"]
+		command "initialize"
+        command "upgrade"
 		
 		command "on"
 		command "off"
 		command "toON"
 		command "toOFF"
 		command "setStateType", ["String", "String"]
+		
 	}
 }
 
@@ -66,23 +79,30 @@ def updated()
 	}
 	
 	if (state.type=="manual"){
-		if (settings?.TopicState != null) state.stateTopic =settings?.TopicState
+		if (settings?.TopicState != null)  sendEvent([name: "stateTopic", value:settings?.TopicState,isStateChange: true])//state.stateTopic =settings?.TopicState
 			else log.warn device.name + " was setup but has no OnOff topic configured"
-		if (settings?.TopicCmd != null) state.commandTopic=settings?.TopicCmd
-		if (settings?.StateON != null) state.stateTypeON = settings?.StateON
-		if (settings?.StateOFF != null) state.stateTypeOFF = settings?.StateOFF
-		if (settings?.TopicLevel != null) state.LevelTopic = settings?.TopicLevel
+		if (settings?.TopicCmd != null)  sendEvent([name: "cmdTopic", value:settings?.TopicCmd,isStateChange: true]) //state.commandTopic=settings?.TopicCmd
+		if (settings?.StateON != null) {
+			//state.stateTypeON = settings?.StateON
+			sendEvent(name: "stateON", value: settings?.StateON,isStateChange: true)
+		}
+		if (settings?.StateOFF != null){
+			//state.stateTypeOFF = settings?.StateOFF
+			sendEvent(name: "stateOFF", value: settings?.StateOFF,isStateChange: true)
+		}
+		if (settings?.TopicLevel != null)  sendEvent([name: "levelTopic", value:settings?.TopicLevel,isStateChange: true])  //state.LevelTopic = settings?.TopicLevel
 			else log.warn device.name + " was setup but has no level topic configured"
-		if (settings?.TopicCmdLevel != null) state.LevelCmdTopic = settings?.TopicCmdLevel
-		if (settings?.maxBrightness != null) state.maxBrightness = settings?.maxBrightness
+		if (settings?.TopicCmdLevel != null) sendEvent([name: "levelCmdTopic", value:settings?.TopicCmdLevel,isStateChange: true])//state.LevelCmdTopic = settings?.TopicCmdLevel
+		if (settings?.maxBrightness != null) sendEvent([name: "maxBrightness", value:settings?.maxBrightness,isStateChange: true]) //state.maxBrightness = settings?.maxBrightness
 	}
-	getStateTopics()  //update map and MQTT topic subscriptions
+	getStateTopics()  //update map and MQTT topic subscriptions  // TODO
 	initialize()
 }
 
 def initialize()
 {
 	refresh()
+	sendEvent(name: "mqtt", value: "dim",isStateChange: true)
 }
 
 def parse(String description) // shouldn't get called
@@ -92,14 +112,14 @@ def parse(String description) // shouldn't get called
 
 def on() {
     //log.debug "child On " + state.commandTopic
-	if (state.type=="manual") sendEvent(name: "changeState", value: state.stateTypeON,  data: [topic: state.commandTopic])
-	else parent.sendPayload(state.commandTopic, state.stateTypeON)
+	if (state.type=="manual") sendEvent(name: "changeState", value: device.currentStateON,  data: [topic: device.currentCmdTopic])
+	else parent.sendPayload(device.currentCmdTopic, device.currentStateON)
 }
 
 def off() {
     //log.debug "child Off "+ state.commandTopic
-	if (state.type=="manual") sendEvent(name: "changeState", value: state.stateTypeOFF,  data: [topic: state.commandTopic])
-	else parent.sendPayload(state.commandTopic, state.stateTypeOFF)
+	if (state.type=="manual") sendEvent(name: "changeState", value: device.currentStateOFF,  data: [topic: device.currentCmdTopic])
+	else parent.sendPayload(device.currentCmdTopic,device.currentStateOFF)
 }
 
 def toON() {  // avoids publish loop
@@ -113,25 +133,27 @@ def toOFF() {  // avoids publish loop
 def setStateType (stateOFF,stateON)
     {
 	//log.trace "Setting OFF State Type to " + stateOFF
-    state.stateTypeOFF = stateOFF
-    state.stateTypeON = stateON
+    //state.stateTypeOFF = stateOFF
+    //state.stateTypeON = stateOFF
+        sendEvent(name: "stateOFF", value: stateOFF,isStateChange: true)
+        sendEvent(name: "stateON", value: stateON,isStateChange: true)
 }
 
 def setLevel(value, duration=1)
 {
 	sendEvent(name: "level", value: value)
 	float newLevel
-	if (state.maxBrightness == '1'|| state.maxBrightness == "1.0")  //TODO need to be careful on accuracies and a loop or creep on value updates - solve by breaking the loop
+	if (device.currentMaxBrightness == '1'|| device.currentMaxBrightness == "1.0")  //TODO need to be careful on accuracies and a loop or creep on value updates - solve by breaking the loop
 	{
 		newLevel= value.toInteger()/100  // TODO messy  doesnt work transparentlywith different devices
-		if (state.type=="manual") sendEvent(name: "changeLevel", value: newLevel.toString(),data: [topic: state.commandTopic, dimTopic: state.LevelCmdTopic])
-		else parent.sendPayload(state.LevelCmdTopic,newLevel.toString())
+		if (state.type=="manual") sendEvent(name: "changeLevel", value: newLevel.toString(),data: [topic: device.currentCmdTopic, dimTopic: device.currentLevelCmdTopic])
+		else parent.sendPayload(device.currentLevelCmdTopic,newLevel.toString())
 	}
 	else 
 	{
-		newLevel= (value.toInteger() * state.maxBrightness.toInteger()) / 100 
-		if (state.type=="manual") sendEvent(name: "changeLevel", value: newLevel.toString(),data: [topic: state.commandTopic, dimTopic: state.LevelCmdTopic])
-		else parent.sendPayload(state.LevelCmdTopic,newLevel.toInteger().toString())
+		newLevel= (value.toInteger() * device.currentMaxBrightness.toInteger()) / 100 
+		if (state.type=="manual") sendEvent(name: "changeLevel", value: newLevel.toString(),data: [topic: device.currentCmdTopic, dimTopic: device.currentLevelCmdTopic])
+		else parent.sendPayload(device.currentLevelCmdTopic,newLevel.toInteger().toString())
 	}
 }
 
@@ -146,37 +168,41 @@ def refresh()
 	// parent.sendDeviceEvent(device.deviceNetworkId, "refresh")
 }
 
+/*
 def sendStateTopics()
 {
-		//log.info "MQTT subscribe topics for manual adhoc devices "
-	    if (state.LevelTopic!=null)  sendEvent([name: "topic", value: state.LevelTopic])  // if have it
-	    if (state.stateTopic!=null)  sendEvent([name: "topic", value: state.stateTopic])  // if have it
+		log.error "SENDSTATETOPICS() MUST DEPRECATE CALL TO THIS AS WILL BREAK"
+    //log.info "MQTT subscribe topics for manual adhoc devices "
+	    if (device.currentLevelTopic!=null)  sendEvent([name: "topic", value: device.currentLevelTopic])  // if have it
+	    if (device.currentStateTopic!=null)  sendEvent([name: "topic", value: device.currentStateTopic])  // if have it
 }
+*/
 
 def getStateTopics()
 {
-	// needed to create lookup to DNI of device to match MQTT state changes for adhoc/manual devices
-	if (state.LevelTopic!=null) 
+	log.warn "getStateTopics() will deprecate - still to move this code"
+    // needed to create lookup to DNI of device to match MQTT state changes for adhoc/manual devices
+	if (device.currentLevelTopic!=null) 
 	{
-		if (state.stateTopic==null) 
+		if (device.currentStateTopic==null) 
 		{	
-			stateTopic = state.LevelTopic  // substitute state into level
-			sendEvent (name: "mapTopic" , value: device, data: [level: state.LevelTopic, state: stateTopic, valueMax: state.maxBrightness, stateON: state.stateTypeON, stateOFF: state.stateTypeOFF])
+			stateTopic = device.currentLevelTopic  // substitute state into level
+			sendEvent (name: "mapTopic" , value: device, data: [level: device.currentLevelTopic, state: stateTopic, valueMax: device.currentMaxBrightness, stateON: device.currentStateON, stateOFF: device.currentStateOFF])
 		}
 	else  //have both state and level topics
 		{  
-			sendEvent(name: "mapTopic", value: device, data: [level: state.LevelTopic, state: state.stateTopic, valueMax: state.maxBrightness, stateON: state.stateTypeON, stateOFF: state.stateTypeOFF])
+			sendEvent(name: "mapTopic", value: device, data: [level: device.currentLevelTopic, state: device.currentStateTopic, valueMax: device.currentMaxBrightness, stateON: device.currentStateON, stateOFF: device.currentStateOFF])
 		}
 	}
-	else if (state.stateTopic!=null) 
+	else if (device.currentStateTopic!=null) 
 	{
-		if (state.LevelTopic==null) 
+		if (device.currentLevelTopic==null) 
 		{
-			levelTopic = state.stateTopic  // substitute state into level
-			sendEvent(name: "mapTopic", value: device, data: [level: levelTopic, state: state.stateTopic, valueMax: state.maxBrightness, stateON: state.stateTypeON, stateOFF: state.stateTypeOFF])
+			levelTopic = device.currentStateTopic  // substitute state into level
+			sendEvent(name: "mapTopic", value: device, data: [level: levelTopic, state: device.currentStateTopic, valueMax: device.currentMaxBrightness, stateON: device.currentStateON, stateOFF: device.currentStateOFF])
 		}
 	}
-	runIn(10, "sendStateTopics")  
+	//runIn(10, "sendStateTopics")  // This is now in app
 	// this helps avoids incoming MQTT messages before the mappings have completed
 	// TODO maybe find a better way of knowing when can safely run - each adhoc device adds 500ms so this only copes with about 20 devices
 	// could use a calculated value
@@ -185,7 +211,8 @@ def getStateTopics()
 
 def setStateTopic(String topic)
 {
-	state.stateTopic=topic
+	//state.stateTopic=topic
+    sendEvent([name: "stateTopic", value:topic,isStateChange: true])
 }
 
 def setType (String system)
@@ -195,26 +222,51 @@ def setType (String system)
 
 def setStateCmdTopic(String topic)
 {
-	state.commandTopic=topic
+	//state.commandTopic=topic
+    sendEvent([name: "cmdTopic", value:topic,isStateChange: true])
 }
 def setLevelTopic(String topic)
 {
-	state.LevelTopic=topic   //TODO change to state.levelTopic
+	//state.LevelTopic=topic   //TODO change to state.levelTopic
+    sendEvent([name: "levelTopic", value:topic,isStateChange: true])
 }
 
 def setLevelCmdTopic(String topic)
 {
-	state.LevelCmdTopic=topic  //TODO change to state.levelCmdTopic
+	//state.LevelCmdTopic=topic  //TODO change to state.levelCmdTopic
+    sendEvent([name: "levelCmdTopic", value:topic,isStateChange: true])
 }
 
 def setMaxBrightness(String maxBrightness)
 {
 	//log.debug "Max brightness set to " + maxBrightness
-	state.maxBrightness=maxBrightness
+	//state.maxBrightness=maxBrightness
+    sendEvent([name: "maxBrightness", value:device.currentMaxBrightness,isStateChange: true])
 }
 
 def setDeviceType(String devType)  // TODO maybe use this for homie HA etc
 {
 	//log.debug "set deviceType to " + devType
-	state.deviceType=devType
+	state.deviceType=devType   // TODO - does this need to be an attribute
+}
+
+def upgrade() {   // This moves state variables to attributes
+   log.warn "MQTT dimmer upgrade already done"
+   return
+   sendEvent([name: "mqtt", value: "dim",isStateChange: true])
+   sendEvent([name: "stateTopic", value:state.stateTopic,isStateChange: true])
+   state.remove("stateTopic")
+   sendEvent([name: "cmdTopic", value:state.commandTopic,isStateChange: true])
+   state.remove("commandTopic")
+   sendEvent([name: "stateON", value:state.stateTypeON,isStateChange: true])
+   state.remove("stateTypeON")
+   sendEvent([name: "stateOFF", value:state.stateTypeOFF,isStateChange: true])
+   state.remove("stateTypeOFF")
+   sendEvent([name: "levelTopic", value:state.LevelTopic,isStateChange: true])
+   state.remove("LevelTopic")
+   sendEvent([name: "levelCmdTopic", value:state.LevelCmdTopic,isStateChange: true])
+   state.remove("LevelCmdTopic")
+   sendEvent([name: "maxBrightness", value:state.maxBrightness,isStateChange: true])
+   state.remove("maxBrightness")
+   log.warn "MQTT dimmer upgraded"
 }
