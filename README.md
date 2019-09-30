@@ -2,12 +2,16 @@
 
 MQTT client for Hubitat
 
-This is currently alpha3b release
+The licence for alpha4 has been updated to be restrictive whilst in testing.  I intend the final version to be under a much less restrictive licence although it will likely require my express written permission to publish any derivate code and no commercial offering will be allowed.
 
-The licence for alpha3 has been updated to be restrictive whilst in testing.  I intend the final version to be under a much less restrictive licence although it will likely require my express written permission to publish any derivate code and no commercial offering will be allowed.
+Pre Release notes for alpha4  
+30th September 2019
 
-Release notes for alpha3b 
-8th June 2019
+This is the pre8 'Adventurer' release of alpha 4 - at this time it is still a work in progress but reasonably useable I hope. Please backup first though and use at your own risk.   You must install the app and the three drivers. They have all changed.
+
+You may lose/have to recreate any virtual devices that you have that import devices from MQTT into HE.  If this is a concern contact me first as there is a way around it. 
+
+This read me will be updated again very shortly with the new features for alpha4 - meanwhile here are the V3 instructions.
 
 
 # Features
