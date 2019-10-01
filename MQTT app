@@ -504,7 +504,7 @@ def initialize() {
 def abort (where) {
             log ("Abort Initialize $where","Error")
             unschedule()
-            unsubscribe()
+            //unsubscribe()
             atomicState.abort=false
             atomicState.abortable=false
             atomicState.appCount=atomicState.appCount-1    
