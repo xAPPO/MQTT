@@ -2926,7 +2926,7 @@ def LookupManual(evt) {
 					index++
 				}
 		}
-	textDev=device.currentState("MQTT")
+	textDev=device.currentState("mqtt")
 	
 	if (textDev!=null) {
 		if (textDev.getStringValue()=="text") textDevice=true	   
