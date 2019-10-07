@@ -69,7 +69,7 @@ preferences {  // can't use atomicState vars in this section
                 input "dimmers", "capability.switchLevel", multiple: true, required: false, title: "<b>Dimmers</b>", submitOnChange: false
 				input "garageDoors", "capability.garageDoorControl", multiple: true, required: false, title: "<b>Garage Door [TBA]</b>", submitOnChange: false  
                 input "humiditysensors", "capability.relativeHumidityMeasurement", multiple: true, required: false, title: "<b>Humidity sensors</b>", submitOnChange: false
-				input "keypads", "capability.keypad", multiple: true, required: false, title: "<b>Keypads [NA]</b>", submitOnChange: false
+				//input "keypads", "capability.securityKeypad", multiple: true, required: false, title: "<b>Keypads [NA]</b>", submitOnChange: false
                 input "locks", "capability.lock", multiple: true, required: false, title: "<b>Locks</b>", submitOnChange: false  //Casey
 				input "motionsensors", "capability.motionSensor", multiple: true, required: false, title: "<b>Motion sensors</b>", submitOnChange: false
                 input "outlets", "capability.outlet", multiple: true, required: false, title: "<b>Outlets [TBA]</b>", submitOnChange: false
