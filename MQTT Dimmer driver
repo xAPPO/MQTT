@@ -2,7 +2,7 @@
 // Not licensed for redistribution in any form - see license readme
 metadata 
 {
-	definition(name: "MQTT Dimmer", namespace: "ukusa", author: "Kevin Hawkins",importUrl: "https://raw.githubusercontent.com/xAPPO/MQTT/alpha/MQTT%20Dimmer")
+	definition(name: "MQTT Dimmer", namespace: "ukusa", author: "Kevin Hawkins",importUrl: "https://raw.githubusercontent.com/xAPPO/MQTT/alpha4/MQTT%20Dimmer%20driver")
 	{
 		capability "Switch"
 		capability "Switch Level"
