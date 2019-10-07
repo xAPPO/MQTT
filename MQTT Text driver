@@ -1,3 +1,4 @@
+//alpha4 pre2 
 metadata 
 {
 	definition(name: "MQTT Text", namespace: "ukusa", author: "Kevin Hawkins")
