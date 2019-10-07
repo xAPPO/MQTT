@@ -2953,23 +2953,24 @@ if (devType=="manual" && !onoffdevice && !dimdevice) {    // we are going to hav
 		
 		if (onoffDevice)  
 		{
-		log ("Handling as onoff", "DEBUG")
+				log ("Handling as onoff", "DEBUG")
 			if (devType=="map") {
 				if (evt.value==LookupID.stateOFF) device.toOFF()
 				else if (evt.value==LookupID.stateON) device.toON()
 			}
 			else {  // will have to surmise state required
 				log ("Surmising required state [" +evt.value+"] for " + device.name,"DEBUG")
-			if (device.currentValue('stateON')!=null) OnValues=device.currentValue('stateON')
-			else OnValues="on,true,yes,1"
+                if (device.currentValue('stateON')!=null) OnValues=device.currentValue('stateON')
+			else OnValues="on,On,ON,true,True,TRUE,yes,Yes,YES,1"
 			if (device.currentValue('stateOFF')!=null) OffValues=device.currentValue('stateOFF')
-			else OffValues="off,false,no,0"	
-
-				if (OnValues.contains(evt.value.toLowerCase()))
+			else OffValues="off,Off,OFF,false,False,FALSE,no,No,NO,0"
+				//if (OnValues.contains(evt.value.toLowerCase()))
+                if (OnValues.contains(evt.value))
 				{
 					if (devType == "system") device.on() else device.toON()
 				}
-				else if (OffValues.contains(evt.value.toLowerCase()))
+				//else if (OffValues.contains(evt.value.toLowerCase()))
+                else if (OffValues.contains(evt.value))
 				{
 					if (devType == "system") device.off() else device.toOFF()
 				}
@@ -2977,7 +2978,7 @@ if (devType=="manual" && !onoffdevice && !dimdevice) {    // we are going to hav
 				}
 			}
 		}
-	
+
 	
 		if (dimDevice) {
 			//if (devType=="dim") {
