@@ -61,7 +61,7 @@ def uninstalled() {
 def initialize() {  
     state.seq=0
     state.subs=0
-    version="alpha4 pre 8"
+    version="alpha4"
 
 //    sendEvent (name: "Status", value: "disconnected" , isStateChange: true)
     sendEvent (name: "presence", value: "not present")
