@@ -175,6 +175,10 @@ def publishMsg(String topic, String payload,int qos = 1, boolean retained = fals
     
 }
 
+def publishMsg(String topic, String payload, int qos, String retained) {
+    publishMsg(topic, payload, qos, retained.toBoolean())
+}
+
 def subscribeTopic (String s) {
 	log ("MQTT subscribing to: " + s, "INFO")
     if (state.connected==true){
