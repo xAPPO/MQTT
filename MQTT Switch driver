@@ -1,8 +1,6 @@
-//alpha4
-// Not licensed for redistribution in any form - see license readme
 metadata 
 {
-	definition(name: "MQTT Switch", namespace: "ukusa", author: "Kevin Hawkins",importUrl: "https://raw.githubusercontent.com/xAPPO/MQTT/alpha4/MQTT%20Switch%20driver")
+	definition(name: "MQTT Switch", namespace: "ukusa", author: "Kevin Hawkins",importUrl: "https://raw.githubusercontent.com/xAPPO/MQTT/master/MQTT%20Switch%20driver")
 	{
 		capability "Switch"
 		//capability "Refresh"
@@ -20,7 +18,7 @@ metadata
 		command "getStateTopics", ["String"]
         command "upgrade"
 		
-		attribute "mqtt","string"
+		attribute "MQTT","string"
 		attribute "stateON", "string"
 		attribute "stateOFF", "string"
         attribute "stateTopic", "strinG"
@@ -74,7 +72,7 @@ def updated()
 def initialize()
 {
 	refresh()
-	sendEvent(name: "mqtt", value: "switch",isStateChange: true)
+	sendEvent(name: "MQTT", value: "switch",isStateChange: true)
 }
 
 
@@ -149,7 +147,7 @@ def setStateCmdTopic(String topic)
 def upgrade() {
   log.warn "MQTT switch upgrade already done"
    return
-   sendEvent(name: "mqtt", value: "switch",isStateChange: true)
+   sendEvent(name: "MQTT", value: "switch",isStateChange: true)
    sendEvent(name: "stateTopic", value:state.stateTopic,isStateChange: true)
        state.remove("stateTopic")
    sendEvent(name: "cmdTopic", value:state.commandTopic,isStateChange: true)
@@ -161,6 +159,5 @@ def upgrade() {
     log.warn "MQTT switch upgraded"
 }
     
-
 
 
