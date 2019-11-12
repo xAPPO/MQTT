@@ -1,8 +1,7 @@
-// Not licensed for redistribution in any form - see license
+// Not licensed for onward /re-distribution for any reason and in any form  - see license
 
 metadata {
-	// v0.4
-    definition (name: "MQTT Client", namespace: "ukusa", author: "Kevin Hawkins",importUrl: "https://raw.githubusercontent.com/xAPPO/MQTT/alpha4/MQTT%20Client%20driver") {
+    definition (name: "MQTT Client", namespace: "ukusa", author: "Kevin Hawkins",importUrl: "https://raw.githubusercontent.com/xAPPO/MQTT/alpha4a/MQTT%20Client") {
         capability "Initialize"
 		capability "Presence Sensor"
         //capability "Indicator"
@@ -10,6 +9,7 @@ metadata {
 		
         command "publishMsg", ["String","String"]
 		command "subscribeTopic",["String"]
+        command "subscribeTopic2",["String"]
 		command "getTopic",["String"] // This is intended to recover the payload for use (e.g. testing or appending) within the application and then unsubscribe
 		//command "createChild", ["String"]  // not using device children currently
 		//command "deleteChild", ["String"]
@@ -61,7 +61,8 @@ def uninstalled() {
 def initialize() {  
     state.seq=0
     state.subs=0
-    version="alpha4"
+    state.count=0
+    version="alpha4a rel"
 
 //    sendEvent (name: "Status", value: "disconnected" , isStateChange: true)
     sendEvent (name: "presence", value: "not present")
@@ -157,12 +158,22 @@ void adviseStatus() {
     log ("Advising app that broker is down","WARN")
     sendEvent(name: "MQTTStatus", value: "Error:", data: [message:"reset"], isStateChange: true)  // will reset
 }
-    
 
-def publishMsg(String topic, String payload,int qos = 1, boolean retained = false ) {
+def publishMsg(String topic, String payload, int qos, String retained) {  // overload for RM compatibility
+    publishMsg(topic, payload, qos, retained.toBoolean())
+}
 
-	if (payload==null) log("Publish payload is null for topic ${topic}","ERROR")
-	if (topic==null) log("Publish topic is null for payload ${payload}","ERROR")
+def publishMsg(String topic, String payload,int qos = 1, boolean retained = false, boolean extra = true ) {
+    if (extra == false) return //  this reduces the messages posted to homie topic to bare minimum although this will no longer be homie compliant
+    if (payload==null) {
+        log("Publish payload is null for topic ${topic}","ERROR")
+        return
+    }
+    if (topic==null){
+        log("Publish topic is null for payload ${payload}","ERROR")
+        return
+    }
+    qos=1  //enforce FTTB
     log("Publish topic is ${topic} for payload ${payload}","TRACE")
     if (state.connected==true){
         interfaces.mqtt.publish(topic, payload, qos, retained)
@@ -175,14 +186,11 @@ def publishMsg(String topic, String payload,int qos = 1, boolean retained = fals
     
 }
 
-def publishMsg(String topic, String payload, int qos, String retained) {
-    publishMsg(topic, payload, qos, retained.toBoolean())
-}
 
 def subscribeTopic (String s) {
 	log ("MQTT subscribing to: " + s, "INFO")
     if (state.connected==true){
-        interfaces.mqtt.subscribe(s)
+        interfaces.mqtt.subscribe(s,1)
          sendEvent (name: "Subscribes", value: state.subs++)   
     }
     else log("Dropping subscription - no MQTT connection","WARN")
@@ -554,12 +562,14 @@ def parse(String description) {
 		}
 
 		else if (topic[3]=='$type') {
-			//log ("Got a type of " + payload[0] + " for " + topic, "TRACE")
+			//log ("Got a type of " + payload[0] + " for " + topic, "INFO")
 			switch (payload[0]) {
 				case 'switch':
 					def evt33 = createEvent(name: "OnOffDev", value: topic[2], isStateChange: true)
 					break
 				case 'light':
+                case 'RGBT light':
+                case 'RGB light':
 					evt33 = createEvent(name: "DimDev", value: topic[2], isStateChange: true)
 					break
 				case 'sensor':
@@ -569,16 +579,19 @@ def parse(String description) {
 					log ("homie " + payload[0] +" type not handled yet for device: "+ topic,"WARN")
 					break
 				case 'socket':
-					def evt33 = createEvent(name: "OnOffDev", value: topic[2], isStateChange: true)
+					evt33 = createEvent(name: "OnOffDev", value: topic[2], isStateChange: true)
 					break
                 case 'button':
 					evt33 = createEvent(name: "ButtonDev", value: topic[2], isStateChange: true)
 					break
+                case 'variable':
+                    evt33 = createEvent(name: "VariableDev", value: topic[2], isStateChange: true)
+                    break
 				default:			
 					log ("homie " + payload[0] +" type not handled for device: "+ topic,"WARN")	
 					break
 			}
-				pause (state.delay)
+				pause (state.delay)  //TODO optimise (remove hopefully)
 				return evt33  // TODO - need to sure it exists .. OK to return from here inside an else ?  isStateChange: true needed otherwise if no change to value: event is sent
 		}
 		else if (topic[3]=='$name') {  
@@ -615,12 +628,11 @@ def parse(String description) {
         return
     }
 
-	//else {  // unhandled parse messages arrive here
-	// BUG Because some else statements are initially satisfied but then not actioned above the else doesn't get run, need to check over TODO
+	else {  // unhandled parse messages arrive here
 		log ("ad hoc MQTT parse  ${interfaces.mqtt.parseMessage(description).topic}       ${payload[0]}", "DEBUG")
 		sendEvent (name: "Lookup", value: payload[0], data: [topic: interfaces.mqtt.parseMessage(description).topic], isStateChange: true) 
 
-	//}
+	}
 }
 
 def deQuote (s) {
