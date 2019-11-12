@@ -1,18 +1,16 @@
-//alpha4
-// Not licensed for redistribution in any form - see license readme
 metadata 
 {
-	definition(name: "MQTT Dimmer", namespace: "ukusa", author: "Kevin Hawkins",importUrl: "https://raw.githubusercontent.com/xAPPO/MQTT/alpha4/MQTT%20Dimmer%20driver")
+	definition(name: "MQTT Dimmer", namespace: "ukusa", author: "Kevin Hawkins",importUrl: "https://raw.githubusercontent.com/xAPPO/MQTT/alpha4a/MQTT%20Dimmer%20driver")
 	{
 		capability "Switch"
 		capability "Switch Level"
 		//capability "Refresh"
 		capability "Telnet"  // temporary kludge to filter devices need capability "MQTT"
 		
-		attribute "mqtt","string"
+		attribute "MQTT","string"
 		attribute "stateON", "string"
 		attribute "stateOFF", "string"
-        attribute "stateTopic", "string"
+        attribute "stateTopic", "strinG"
         attribute "cmdTopic","string"
 		attribute "levelTopic", "strinG"
         attribute "levelCmdTopic","string"
@@ -53,7 +51,7 @@ preferences{
 		input name: "TopicCmdLevel", type: "text", title: "Level command topic", description: "", required: false, displayDuringSetup: true		
 		input name: "StateON", type: "text", title: "State on is..", description: "e.g. &nbsp ON &nbsp On &nbsp true &nbsp 1 &nbsp yes", required: false, displayDuringSetup: true
 		input name: "StateOFF", type: "text", title: "State off is..", description: "e.g. &nbsp OFF &nbsp Off &nbsp false &nbsp 0 &nbsp no", required: false, displayDuringSetup: true
-		input name: "maxBrightness", type: "string", title: "Maximum brightness level", description: " e.g. &nbsp 1.0 &nbsp 5.0  &nbsp 100 &nbsp 255", required: false, displayDuringSetup: true
+		input name: "maxBrightness", type: "number", title: "Maximum brightness level", description: " e.g. &nbsp 1.0 &nbsp 5.0  &nbsp 100 &nbsp 255", required: false, displayDuringSetup: true
 	}
 }
 
@@ -103,7 +101,7 @@ def updated()
 def initialize()
 {
 	refresh()
-	sendEvent(name: "mqtt", value: "dim",isStateChange: true)
+	sendEvent(name: "MQTT", value: "dim",isStateChange: true)
 }
 
 def parse(String description) // shouldn't get called
@@ -169,7 +167,6 @@ def refresh()
 	// parent.sendDeviceEvent(device.deviceNetworkId, "refresh")
 }
 
-/*
 def sendStateTopics()
 {
 		log.error "SENDSTATETOPICS() MUST DEPRECATE CALL TO THIS AS WILL BREAK"
@@ -177,11 +174,10 @@ def sendStateTopics()
 	    if (device.currentLevelTopic!=null)  sendEvent([name: "topic", value: device.currentLevelTopic])  // if have it
 	    if (device.currentStateTopic!=null)  sendEvent([name: "topic", value: device.currentStateTopic])  // if have it
 }
-*/
 
 def getStateTopics()
 {
-	log.warn "getStateTopics() will deprecate - still to move this code"
+	log.error "GETSTATETOPICS() MUST DEPRECATE CALL TO THIS AS WILL BREAK"
     // needed to create lookup to DNI of device to match MQTT state changes for adhoc/manual devices
 	if (device.currentLevelTopic!=null) 
 	{
@@ -203,7 +199,7 @@ def getStateTopics()
 			sendEvent(name: "mapTopic", value: device, data: [level: levelTopic, state: device.currentStateTopic, valueMax: device.currentMaxBrightness, stateON: device.currentStateON, stateOFF: device.currentStateOFF])
 		}
 	}
-	//runIn(10, "sendStateTopics")  // This is now in app
+	runIn(10, "sendStateTopics")  // TODO
 	// this helps avoids incoming MQTT messages before the mappings have completed
 	// TODO maybe find a better way of knowing when can safely run - each adhoc device adds 500ms so this only copes with about 20 devices
 	// could use a calculated value
@@ -242,8 +238,7 @@ def setMaxBrightness(String maxBrightness)
 {
 	//log.debug "Max brightness set to " + maxBrightness
 	//state.maxBrightness=maxBrightness
-    //sendEvent([name: "maxBrightness", value:device.currentMaxBrightness,isStateChange: true])
-    sendEvent([name: "maxBrightness", value:maxBrightness,isStateChange: true])
+    sendEvent([name: "maxBrightness", value:device.currentMaxBrightness,isStateChange: true])
 }
 
 def setDeviceType(String devType)  // TODO maybe use this for homie HA etc
@@ -255,7 +250,7 @@ def setDeviceType(String devType)  // TODO maybe use this for homie HA etc
 def upgrade() {   // This moves state variables to attributes
    log.warn "MQTT dimmer upgrade already done"
    return
-   sendEvent([name: "mqtt", value: "dim",isStateChange: true])
+   sendEvent([name: "MQTT", value: "dim",isStateChange: true])
    sendEvent([name: "stateTopic", value:state.stateTopic,isStateChange: true])
    state.remove("stateTopic")
    sendEvent([name: "cmdTopic", value:state.commandTopic,isStateChange: true])
