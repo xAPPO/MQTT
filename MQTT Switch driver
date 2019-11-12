@@ -1,6 +1,6 @@
 metadata 
 {
-	definition(name: "MQTT Switch", namespace: "ukusa", author: "Kevin Hawkins",importUrl: "https://raw.githubusercontent.com/xAPPO/MQTT/master/MQTT%20Switch%20driver")
+	definition(name: "MQTT Switch", namespace: "ukusa", author: "Kevin Hawkins",importUrl: "https://raw.githubusercontent.com/xAPPO/MQTT/alpha4a/MQTT%20Switch%20driver")
 	{
 		capability "Switch"
 		//capability "Refresh"
