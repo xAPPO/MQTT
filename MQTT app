@@ -61,7 +61,7 @@ preferences {  // can't use atomicState vars in this section
              input "buttons", "capability.button",hideWhenEmpty: true, multiple: true, required: false, title: "<b>Buttons</b>", submitOnChange: false  
              input "buttonshold", "capability.holdableButton",hideWhenEmpty: true, multiple: true, required: false, title: "<b>Buttons holdable</b>", submitOnChange: false
                 input "buttonspush", "capability.pushableButton",hideWhenEmpty: true, multiple: true, required: false, title: "<b>Buttons pushable</b>", submitOnChange: false 
-             input "buttonsrelease", "capability.releasableButton",hideWhenEmpty: true, multiple: true, required: false, title: "<b>Buttons releaseable</b>", submitOnChange: false
+             input "buttonsrelease", "capability.releasableButton",hideWhenEmpty: true, multiple: true, required: false, title: "<b>Buttons releasable</b>", submitOnChange: false
              input "buttonsdtap", "capability.doubleTapableButton",hideWhenEmpty: true, multiple: true, required: false, title: "<b>Buttons double tapable</b>", submitOnChange: false
                 input "carbonmonoxidesensors", "capability.carbonMonoxideDetector",hideWhenEmpty: true,multiple: true, required: false, title: "<b>Carbon monoxide detectors</b>", submitOnChange: false
                 input "chimes", "capability.chime",hideWhenEmpty: true,multiple: true, required: false, title: "<b>Chimes</b>", submitOnChange: false               
