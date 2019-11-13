@@ -4,14 +4,14 @@ MQTT client for Hubitat
 
 The licence for alpha4 has been updated to be restrictive whilst in testing.  I intend the final version to be under a much less restrictive licence although it will likely require my express written permission to publish any derivate code and no commercial offering will be allowed.
 
-Pre Release notes for alpha4  
-7th October 2019
+Pre Release notes for alpha4a 
+13th November2019
 
-This read me is only partially updated for alpha 4 - at this time .  Before installing please backup first though and as alwaysuse at your own risk.   You must install the app and the three drivers. They have all changed.
+This read me is only partially updated for alpha 4a - at this time .  Before installing please backup first though and as always use at your own risk.   You must install the app and the four drivers. They have all changed.
 
 You may lose/have to recreate any virtual devices that you have that import devices from MQTT into HE.  If this is a concern contact me first as there is a way around it. 
 
-This read me will be updated again very shortly with the new features for alpha4 - meanwhile here are the older V3 instructions taht are still valid
+This read me will be updated again very shortly with the new features for alpha4a - meanwhile here are the older V3 instructions that are still valid.  alpha4a feature additions are listed in the Hubitat community alpha topic.
 
 
 # Features
@@ -22,28 +22,29 @@ b) Enable MQTT devices* to be 'mirrored'  as virtual devices and controlled with
 
 c) Enable automatic discovery and selected inclusion of devices* and sensors using the homie3 protocol (promoted by openHAB)
 
-d) Enable automatic discovery and selected inclusion of devices* and sensors using the Home Assistant statestream protocol (offered by HA) - a small  automation script is provided for HA that enables the statestream protocol for control > HA too.
+d) Enable automatic discovery and selected inclusion of devices* and sensors using the Home Assistant statestream protocol (offered by HA) - a small automation script is provided for HA that enables the statestream protocol for control > HA too.
 
 e) Enable automatic discovery and selected inclusion of Hubitat devices* and sensors into Home Assistant using the HA MQTT Discovery protocol.
 
 f) Athoms' Homey controller also supports MQTT and the homie3 protocol. They work really well together automatically discovering each others devices and enabling realtime synchronisation and control between the controllers. Two HE's could work this way too but HubConnect is probably an easier option.  HubConnect virtual devices of course work with this MQTT app too.
 
-*N.B.This version currently supports 'switch' (onoff), 'switchLevel' (dim) colour and sensor capabilities only - but will be expanded to include others.  Sensors are still a work in progress.
+*N.B.This version currently supports 'switch' (onoff), 'switchLevel' (dim) colour and sensor capabilities only - but will be expanded to include others.  Sensors are much more complete but still being expanded.
 
 # Future Features:
 
 1) Support of many more device capabilities beyond 'onoff' and 'dim' and 'color'
 2) Expand sensor support for better mapping of sensor data to devices.
 3) Support Home Assistant MQTT discovery protocol bidirectionally - HE devices auto discovered by HA and devices advertising using this protocol discoverable by HE. (may drop this latter support for HA Discovery > HE)
-4) Know Issue: currently,  at startup, HE devices do not publish their current state to MQTT. They do on change. [FIXED]
+~~4) Know Issue: currently,  at startup, HE devices do not publish their current state to MQTT. They do on change. [FIXED]~~
 5) Better support for decimal maxBrightness values
 6) Support for multiple homie discovered devices.
 7) Support for JSON payloads
-8) More complete support for homie3 specification from Hubitat - enough so openHAB# discovery is happy. [DONE]
+~~8) More complete support for homie3 specification from Hubitat - enough so openHAB# discovery is happy. [DONE]~~
 9) Support multiple MQTT brokers (considering)
 
-  #I have not yet tried openHAB homie3 discovery but I suspect it may not work currently.  You will need at least openHAB 2.5 milestone 1 build, maybe later, and for various stability reasons I can't recommend you upgrade to that - and definately not post milestone 1 builds. This is an openHAB issue rather than this app.  
-  #Update -  OpenHAB 2.5M3 (milestone 3) has been released. Huge changes have happened in OH between 2.5M1 and 2.5M3 so I look forward to seeing how my app works with OH 2.5M3. Please let me know
+  #I have not yet tried openHAB homie3 discovery but I suspect it may still need work.  You will need at least openHAB 2.5 milestone 3 build, maybe later. This is an openHAB issue rather than an issue with this app.
+  
+  #Update -  OpenHAB 2.5M4 (milestone 4) has been released. Huge changes have happened in OH between 2.5M1 and 2.5M3 so I look forward to seeing how my app works with OH 2.5M4 please let me know
 
 
 # Instructions: 
@@ -51,11 +52,11 @@ f) Athoms' Homey controller also supports MQTT and the homie3 protocol. They wor
 
 # Initial setup:
 
-1) Install both the main app MQTT and the device drivers for MQTT Client, MQTT Dimmer and MQTT Switch
-2) From 'Devices' "Add Virtual Device" selecting the "MQTT client" device driver, name the broker device as you wish, make up a Device Network ID e.g. the IP of the broker.
+1) Install both the main app MQTT and the device drivers for MQTT Client, MQTT Dimmer,  MQTT Switch and optionally MQTT text.
+2) From 'Devices' "Add Virtual Device" selecting the "MQTT client" device driver, name the broker device as you wish, make up a Device Network ID e.g. the IP of the broker.  Do NOT create two MQTT client drivers as this causes issues.
 3) Configure this device to access your existing MQTT broker using the 'Preferences' section on the next screen in the device driver then click 'Done'.
-You must enter the IP (or URL) e.g. tcp://192.168.1.78:1883 ,  username / password are only required if your broker needs them.
-4) Launch the MQTT app, it has two setup pages each with multiple sections , the first page covers individual devices and the second for 'discovery'. The second page is optional.
+You must enter the IP (or URL) e.g. tcp://192.168.1.78:1883 ,  username / password are only required if your broker needs them.  NB include  tcp:// at the start of the entry.
+4) Launch the MQTT app, it has two setup pages each with multiple sections , the first page covers individual devices and the second for 'discovery'. Configuring the second page is optional.
 On the first page click 'Configuration' and from the 'MQTT Broker' dropdown select the MQTT client device you just configured in step 3
 For the time being ignore all other options and select 'Next' on the first page and 'Done' on the second 
 .. you should see something similar to this in the log.
@@ -81,9 +82,9 @@ Inparticular check that you get the "Connected as Hubitat_xxxx to MQTT broker" s
 Now choose from the key features listed above which feature(s) a) b) c) or d) you are trying to setup the MQTT app for.
 I recommend choosing just one for now.  a) is the easiest.
 
-Then follow the option a)-d) below that you need.....
+Then follow the matching option a)-d) below that you need.....
 
-Lastly two app configuration options re. 'LogLevel' and importantly 'Deleting MQTT discovered devices' are discussed right at the end of these instructions in 'Additional Notes'.  Please read those too.
+Lastly several of less obvious app configuration options are discussed right at the end of these instructions in 'Additional Notes'.  Please read those too.
 __________________________________________________________________________________________________________________________
 # a) Enabling inbuilt 'real' HE devices*  to publish and be controllable through MQTT
  
@@ -275,9 +276,15 @@ They can be recreated by re-running the app. However the unique internal device 
 This really only has an impact on HE internal references to the original device e.g. Dashboard devices and RuleMachine rules. You will have to recreate these.
 The main use is to clear out all your discovered devices but once running happily you should leave this set to OFF. 
 You can always disable devices on the second page of the app config and individually delete previously created devices manually.
-	
-	
-	
 
+# Forget Enabled Devices
+
+Enabling this will purge your drop down lists from devices that have been discovered and enabled in these lists at restart. They will be re-discovered at startup but not enabled.
 	
-	
+# Complete and Compliant Homie Topics	
+
+Please leave this set ON for the time being.  If you experience a lot of 'error' messages at startup then please toggle this off and then 'on' again and click 'next' through to restart.  This option will be used once the 'Hubitat/' topic is deprecated to publish a minimal and non complient homie/ tree in it's palce - for simplicity.
+
+# Retain homie states
+
+Makes the homie state topics retained on the MQTT broker (normal).  NB homie /set topics should NOT be published retained.
