@@ -84,8 +84,8 @@ preferences {  // can't use atomicState vars in this section
 				input "thermostats", "capability.thermostat", multiple: true, required: false, title: "<b>Thermostats</b>", submitOnChange: false
                 input "valves", "capability.valve", multiple: true, required: false, title: "<b>Valves [TBA]</b>", submitOnChange: false  
                 input "voltagesensors", "capability.voltageMeasurement", multiple: true, required: false, title: "<b>Voltage sensors</b>", submitOnChange: false
-                input "watersensors", "capability.aterSensors", multiple: true, required: false, title: "<b>Water Sensors [TBA]</b>", submitOnChange: false
-                input "windowshades", "capability.windowShades", multiple: true, required: false, title: "<b>Window Shades [TBA]</b>", submitOnChange: false
+                input "watersensors", "capability.waterSensor", multiple: true, required: false, title: "<b>Water Sensors [TBA]</b>", submitOnChange: false
+                input "windowshades", "capability.windowShade", multiple: true, required: false, title: "<b>Window Shades [TBA]</b>", submitOnChange: false
                 //TODO add remaining sensors type (as and if requested)
 			}				
 			section ("<b>MQTT Publish Formats</b>", hideable: true, hidden: true){
@@ -404,12 +404,12 @@ def initialize() {
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$state','init',1,true)
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$homie','3.0.1',1,true) 
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$implementation','groovy:uk.co.ukusa.mqtt',1,true)
-		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$fw/version','4 (1)',1,true)
+		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$fw/version','4 (2)',1,true)
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$fw/name','alpha',1,true)
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$name',settings?.hubName,1,true)
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$mac','BB:AA:DD:AA:55:55',1,true)
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$localip','1.2.3.4',1,true)
-		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$implementation/version','alpha4 (1)',1,true)
+		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$implementation/version','alpha4 (2)',1,true)
 	}
 	mqtt.setStateVar("logLevel",determineLogLevel(settings?.logging ?: "INFO"))
 	if ((settings?.mqttRemoveDevices == true))
