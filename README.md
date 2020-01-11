@@ -1,3 +1,8 @@
+IN PROGRESS
+
+This will very shortly - not yet be updated for alpha 5 
+
+
 # MQTT
 
 MQTT client for Hubitat
