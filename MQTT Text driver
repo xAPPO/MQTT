@@ -1,13 +1,18 @@
-//alpha4 pre2 
+// Alpha 5 (test version)
+
 metadata 
 {
-	definition(name: "MQTT Text", namespace: "ukusa", author: "Kevin Hawkins",importUrl: "https://raw.githubusercontent.com/xAPPO/MQTT/alpha4/MQTT%20Text%20driver")
+	definition(name: "MQTT Text", namespace: "ukusa", author: "Kevin Hawkins")
 	{
 		capability "Sensor"
 		//capability "Refresh"
 		capability "Telnet"  // temporary kludge
-		
 		capability "Notification"
+        capability "Actuator"
+        //capability "Switch"
+        
+
+        
 		attribute "text", "string"
 		attribute "sensor","string"
 		attribute "mqtt","string"
@@ -17,10 +22,13 @@ metadata
         attribute "textTopic","string"
         attribute "textPrefix","string"
         attribute "textSuffix","string"
-        attribute "commandTopic","string"
+        attribute "cmdTopic","string"
+        attribute "textCmdTopic","string"
         
-        
+        command "updateText", ["String"]
 		command "setStateTopic", ["String"]
+        command "setText", ["String"]
+        command "forceText", ["String"]
         command "setTextTopic", ["String"]
         command "setTextCmdTopic", ["String"]
 //		command "getStateTopics", ["String"]
@@ -33,6 +41,7 @@ metadata
 		//command "toON"
 		//command "toOFF"
 		command "setValue", ["String"]
+        command "forceValue", ["String"]   // updates text value directly as well should be boolean or string option
 	}
 }
 
@@ -90,14 +99,14 @@ def on() {
     //log.debug "child On " + state.commandTopic
 	sendEvent(name: "switch", value: "on", isStateChange: true)
 	//parent.sendPayload(state.commandTopic,"true")
-	parent.sendPayload(state.commandTopic, state.stateTypeON)
+	parent.sendPayload(device.cmdTopic, device.stateTypeON)
 }
 
 def off() {
     //log.debug "child Off "+ state.commandTopic
 	sendEvent(name: "switch", value: "off", isStateChange: true)
 	//parent.sendPayload(state.commandTopic,"false")
-	parent.sendPayload(state.commandTopic,state.stateTypeOFF)
+	parent.sendPayload(device.cmdTopic,device.stateTypeOFF)
 }
 
 def toON() {  // avoids publish loop
@@ -128,22 +137,28 @@ def setStateType (stateOFF,stateON)
 
 def setSuffix(suffix)
 {
-	sendEvent(name: "textSuffix", value: suffix,isStateChange: true)
+	if (suffix==null) suffix = ' '
+    sendEvent(name: "textSuffix", value: suffix,isStateChange: true)
 }
                   
 def setPrefix(prefix)
 {
-	sendEvent(name: "textPrefix", value: prefix,isStateChange: true)
+	if (prefix==null) prefix=' '
+    sendEvent(name: "textPrefix", value: prefix,isStateChange: true)
 }
 
-def refresh()
-{
-	// Maybe refresh the device by requesting an update from the MQTT broker ?
-	//parent.sendDeviceEvent(device.deviceNetworkId, "refresh")
-}
 
 def setText(String display){
-	sendEvent(name: "text", value: display,isStateChange: true)
+	//sendEvent(name: "text", value: display,isStateChange: true) 
+    if (state.type=="manual") sendEvent(name: "changeText", value: display,  data: [topic: device.currentValue("textCmdTopic")],isStateChange: true)
+
+	//else parent.sendPayload(state.commandTopic,device.currentStateOFF) 
+}
+def forceText(String display){
+	sendEvent(name: "text", value: display,isStateChange: true) 
+    if (state.type=="manual") sendEvent(name: "changeText", value: display,  data: [topic: device.currentValue("textCmdTopic")],isStateChange: true)
+
+	//else parent.sendPayload(state.commandTopic,device.currentStateOFF) 
 }
 	
 
@@ -157,7 +172,7 @@ def setStateTopic(String topic)
 def setStateCmdTopic(String topic)
 {
 	//log.debug "Command topic set to " + topic
-	sendEvent(name: "commandTopic", value: topic,isStateChange: true)
+	sendEvent(name: "cmdTopic", value: topic,isStateChange: true)
 }
 
 def setTextTopic(String topic)
@@ -178,13 +193,35 @@ def sync()  // TODO or remove
 }
 //def getDriverVersion() {[platform: "Universal", major: 1, minor: 2, build: 1]}
 
+def updateText (String value){  
+    sendEvent(name: "text", value: value, isStateChange: true) 
+}  
+
 def setValue (String value)
 {
 	//log.trace  "Text Device was set to ${value}"
     //sendEvent(name: "Notify", value: state.statePrefix + value + state.stateSuffix,isStateChange: true)
-	if (state.statePrefix == null)state.statePrefix=''
-	if (state.stateSuffix == null)state.stateSuffix=''
-	sendEvent(name: "text", value: state.statePrefix + value + state.stateSuffix,isStateChange: true)
-    sendEvent(name: "textCmdTopic", value: value, isStateChange: true)
+ 
+	if (device.currentValue("textPrefix") !=" ") value = device.latestValue("textPrefix") + value
+	if (device.currentValue("textSuffix") != " ") value = value + device.latestValue("textSuffix") 
+    if (state.type=="manual") sendEvent(name: "changeText", value: display,  data: [topic: device.currentValue("textCmdTopic")],isStateChange: true)
+
+	//sendEvent(name: "text", value: value, isStateChange: true)
+    //sendEvent(name: "textCmdTopic", value: "", isStateChange: true)
+    //if (state.type=="manual") sendEvent(name: "changeText", value: value,  data: [topic:  device.textCmdTopic],isStateChange: true)
+	sendEvent(name: "mqtt", value: 'text',isStateChange: true)
+}
+def forceValue (String value)
+{
+	//log.trace  "Text Device was set to ${value}"
+    //sendEvent(name: "Notify", value: state.statePrefix + value + state.stateSuffix,isStateChange: true)
+ 
+	if (device.currentValue("textPrefix") !=" ") value = device.latestValue("textPrefix") + value
+	if (device.currentValue("textSuffix") != " ") value = value + device.latestValue("textSuffix") 
+    if (state.type=="manual") sendEvent(name: "changeText", value: display,  data: [topic: device.currentValue("textCmdTopic")],isStateChange: true)
+
+	sendEvent(name: "text", value: value, isStateChange: true)
+    //sendEvent(name: "textCmdTopic", value: "", isStateChange: true)
+    //if (state.type=="manual") sendEvent(name: "changeText", value: value,  data: [topic:  device.textCmdTopic],isStateChange: true)
 	sendEvent(name: "mqtt", value: 'text',isStateChange: true)
 }
