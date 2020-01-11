@@ -225,3 +225,4 @@ def forceValue (String value)
     //if (state.type=="manual") sendEvent(name: "changeText", value: value,  data: [topic:  device.textCmdTopic],isStateChange: true)
 	sendEvent(name: "mqtt", value: 'text',isStateChange: true)
 }
+
