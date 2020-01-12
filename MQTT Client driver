@@ -1,1 +1,1161 @@
-// Alpha 5 due very shortly
+// Not licensed for onward /re-distribution for any reason and in any form  - see license
+
+metadata {
+	// v0.5
+    definition (name: "MQTT Client", namespace: "ukusa", author: "Kevin Hawkins",importUrl: "https://raw.githubusercontent.com/Gledholt/TTQM5/master/MQTT%20client") {
+        capability "Initialize"
+		capability "Presence Sensor"
+        //capability "Indicator"
+    
+		
+        command "publishMsg", ["String","String"]
+		command "subscribeTopic",["String"]
+        command "unsubscribeTopic",["String"]
+        command "subscribeWildcardTopic",["String"]
+		command "getTopic",["String"] // This is intended to recover the payload for use (e.g. testing or appending) within the application and then unsubscribe
+		//command "createChild", ["String"]  // not using device children currently
+		//command "deleteChild", ["String"]
+		//command "setStateTopic", ["String","String"]
+		//command "setCommandTopic", ["String","String"]
+		command "ack", ["Integer"]
+        command "setEventDelay",["Integer"]
+		command "reset"
+		command "setStateVar", ["String","String"]
+        command "setLogLevel", ["Integer"]
+        
+        attribute "Sequence", "integer"
+        attribute "Subscribes", "integer"
+        
+//		attribute "RXTopic", "string"
+//		attribute "OnOffDev", "string"
+//		attribute "DimDev", "string"
+//        attribute "Status", "string"
+		//attribute "OnOff", "string"
+    }
+    preferences {
+		input name: "MQTTBroker", type: "text", title: "MQTT Broker Address", description: "e.g. tcp://192.168.1.17:1883", required: true, displayDuringSetup: true
+		input name: "username", type: "text", title: "MQTT Username", description: "(blank if none)", required: false, displayDuringSetup: true
+		input name: "password", type: "password", title: "MQTT Password", description: "(blank if none)", required: false, displayDuringSetup: true
+		//input name: "clientID", type: "text", title: "MQTT Client ID", description: "(blank for auto)",defaultValue: "Hubitat Elevation", required: false, displayDuringSetup: true
+		//input name: "spare", type: "text", title: "MQTT user", description: "User (blank if none)", required: false, displayDuringSetup: true
+		//input name: "Retain", type: "bool", title: "Retain published states", required: true, defaultValue: false
+    }
+
+}
+
+//import groovy.transform.Field  // TODO needed ?
+
+
+def installed() {
+    log ("installed...", "WARN")
+	initialize()
+}
+
+def updated() {
+    log ("MQTT client updated...", "INFO")
+    state.clear()
+    initialize()
+}
+
+def uninstalled() {
+    log ("disconnecting from mqtt", "INFO")
+    interfaces.mqtt.disconnect()
+}
+
+def initialize() {
+    unschedule (heartbeat)
+    state.seqNum=0
+    state.seq=0
+    state.subs=0
+    state.count=0
+    state.ack=[]
+    state.maxImmediate=0 
+    state.maxComplete=0
+    schedule("0/20 * * * * ? *", heartbeat)
+    state.waiting = "none"
+    
+    version="alpha 5"
+    if (state.delay==null) state.delay=250 // inter state.maxImmediate event pacing in mS
+
+//    sendEvent (name: "Status", value: "disconnected" , isStateChange: true)
+    sendEvent (name: "presence", value: "not present")
+    sendEvent (name: "Sequence", value: state.seq++)
+    sendEvent (name: "Subscribes", value: state.subs++)
+    state.connected=false
+	state.continue=false	
+    if (state.normHubName==null) state.normHubName = "temporary"
+    log.debug "Initialise MQTT"
+	//state.connectionAttempts = 0
+    mqttState=false
+    mqttState=mqttConnect()
+    while(!mqttState) { 
+        log ("MQTT connect failed attempt:[$state.connectionAttempts], try again in 10 secs","INFO")
+        pauseExecution(10000)  // 10 second pause // TODO refine with increasing periods
+        mqttState=mqttConnect()
+}
+    log.debug "Connected to MQTT broker ${settings?.MQTTBroker}"
+    subscribeTopic ('homie/'+state.normHubName+'/$implementation/heartbeat')
+    state.connectionAttempts = 0
+    state.seq2=0
+	//state.numDimDevices=0  // not using local devices
+	//state.DimDevices=[]
+	//state.numOnOffDevices=0
+    //state.OnOffDevices=[]
+
+}
+
+void setEventDelay (delaymS) {
+    state.delay = delaymS
+}
+void setLogLevel (level) {
+    if (level<6) {
+        state.logLevel=level
+        log ("Log Level set to " + level,"INFO")
+    }
+}
+
+boolean mqttConnect() {
+        try {
+        def mqttInt = interfaces.mqtt
+        log.info "MQTT> client ${version} initialising"       
+         try{
+            interfaces.mqtt.connect(settings?.MQTTBroker, "Hubitat_${state.normHubName}", settings?.username,settings?.password, lastWillTopic: "Hubitat/${state.normHubName}/LWT", lastWillQos: 0, lastWillMessage: "I died")//give it a chance to start
+            pauseExecution(1000)
+            log ("Connecting as Hubitat_${state.normHubName} to MQTT broker ${settings?.MQTTBroker}", "INFO")
+            interfaces.mqtt.publish("homie/${state.normHubName}/" + '$fw/client',"${version}",1,true)
+            interfaces.mqtt.subscribe ('homie/'+state.normHubName+'/$implementation/heartbeat')
+            state.connected=true
+//            sendEvent (name: "Status", value: "connected" , isStateChange: true)
+            sendEvent (name: "presence", value: "present")
+	        //state.delay=250  //delay between events - increase if you have a lot of discovered MQTT devices > 100
+//            state.device=""
+             return (true)
+        } 
+        catch(e) {
+           log ("MQTT initialise error: ${e.message}", "WARN")
+		    //TODO retries
+           state.connected=false
+//          sendEvent (name: "Status", value: "disconnected" , isStateChange: true)
+           sendEvent (name: "presence", value: "not present")
+           state.connectionAttempts ++
+           return (false)
+        }    
+    }
+    catch(e) {
+        log ("MQTT initialise failed: ${e.message}", "ERROR")
+        state.connectionAttempts ++
+        state.connected=false
+//        sendEvent (name: "Status", value: "disconnected" , isStateChange: true
+        sendEvent (name: "presence", value: "not present")          
+        log ("No MQTT connection", "ERROR")
+        return (false)
+    }
+    
+    
+}
+
+void mqttClientStatus(String message) {
+    status=message.take(6)
+    if (status=="Error:") {
+        try {
+            interfaces.mqtt.disconnect()  // clears buffers
+        }
+        catch (e)
+        {
+        }
+        
+        state.connected=false
+        log ("Broker: ${message} Will restart in 5 seconds","ERROR")
+        runIn (4,"adviseStatus")
+       // sendEvent(name: "MQTTStatus", value: status, data: [message:message], isStateChange: true)  // will reset
+        runIn (5,"reset")  
+    }
+    else {
+        log ("Broker: ${message}","INFO")
+        state.connected=true
+        subscribeTopic ('homie/'+state.normHubName+'/$implementation/heartbeat')
+        //    sendEvent (name: "Status", value: "connected" , isStateChange: true)
+        sendEvent (name: "presence", value: "present")
+        sendEvent(name: "MQTTStatus", value: status, data: [message:message], isStateChange: true)  // allow continue
+        // need to advise app have a connection to allow it to continue.
+    }
+}
+
+void adviseStatus() {
+    log ("Advising app that broker is down","WARN")
+    sendEvent(name: "MQTTStatus", value: "Error:", data: [message:"reset"], isStateChange: true)  // will reset
+}
+
+def publishMsg(String topic, String payload, int qos, String retained) {  // overload for RM compatibility
+    publishMsg(topic, payload, qos, retained.toBoolean())
+}
+
+def publishMsg(String topic, String payload,int qos = 1, boolean retained = false, boolean suppress = false ) {
+    if (suppress == true){
+        //if (state.normHubName=="development") log.trace ("Suppressed: $topic = $payload")
+        return //  this reduces the messages posted to homie topic to bare minimum although this will no longer be homie compliant
+    } 
+/*
+if (topic.startsWith("Hubitat/"+state.hubName+"/")) {
+        return  //blocks Hubitat topics - remove calls in app later (now done)
+    }
+*/
+                         
+    if (payload==null) {
+        log("Publish payload is null for topic ${topic}","ERROR")
+        return
+    }
+    if (topic==null){
+        log("Publish topic is null for payload ${payload}","ERROR")
+        return
+    }
+    qos=1  //enforce FTTB
+    log("Publish topic is ${topic} for payload ${payload}","TRACE")
+    if (state.connected==true){
+        interfaces.mqtt.publish(topic, payload, qos, retained)
+        sendEvent (name: "Sequence", value: state.seq++)
+    }
+    else {
+        log ("Dropping message - no MQTT connection","WARN")
+        return
+    }
+    
+}
+
+
+def subscribeTopic (String s) {
+    if (s.startsWith('homie/development/$fw/')) {
+        log ("MQTT subscribing to: " + s, "KH")
+        if (s.endsWith("name")) state.waiting = "name"
+        else if (s.endsWith("version"))  state.waiting = "version"
+        else if (s.endsWith("client"))  state.waiting = "client"
+        log ("state.waiting is now $state.waiting","DEBUG")
+            }
+	else log ("MQTT subscribing to: " + s, "INFO")
+    if (state.connected==true){
+        interfaces.mqtt.subscribe(s,1)
+         sendEvent (name: "Subscribes", value: state.subs++)   
+    }
+    else log("Dropping subscription - no MQTT connection","WARN")
+}
+
+def unsubscribeTopic (String s) {
+	log ("MQTT unsubscribing from: " + s, "DEBUG")
+    if (state.connected==true){
+        interfaces.mqtt.unsubscribe(s)
+         sendEvent (name: "Subscribes", value: --state.subs)   
+    }
+    else log("Dropping unsubscribe - no MQTT connection","WARN")
+}
+
+
+def subscribeWildcardTopic (String s) {
+	log ("MQTT subscribing to: " + s, "DEBUG")
+    if (state.connected==true){
+        topics=s.split('/')
+	    topicCounts=topics.size()
+        state.topic0=topics[0]
+        state.topic1=topics[1]
+        state.topic2=topics[2]
+        //state.topic3=topics[3]
+        
+        interfaces.mqtt.subscribe(s,1)
+        sendEvent (name: "Subscribes", value: state.subs++)
+        pauseExecution(10000)
+        interfaces.mqtt.unsubscribe(s)
+        log ("MQTT unsubscribing from: " + s, "INFO")
+    }
+    else log("Dropping subscription - no MQTT connection","WARN")
+}
+
+
+def ack(seq) {
+    roundTime = now() - state.dispatch
+    
+    if (seq!=null){
+    if (seq[0] != '@') {
+        log  ("==$seq==   $roundTime mS","DEBUG")
+        if (roundTime > state.maxImmediate) state.maxImmediate = roundTime
+    }
+    else {
+        log ( "            ==$seq==   $roundTime mS","DEBUG")
+        if (roundTime > state.maxComplete) state.maxComplete = roundTime
+    } 
+    }
+    else log ("##null##","DEBUG")
+/*    
+    else {
+        if (seq != null) {
+        seqNum = seq.toInteger()
+        state.ack[seqNum]=' '
+        }
+    }
+*/
+}
+
+def getTopic (String s) {
+	state.continue=false
+	log  ("Checking on ${s}","ERROR")
+    if (state.connected==true) {
+        interfaces.mqtt.subscribe(s)
+        sendEvent (name: "Subscribes", value: state.subs++) 
+	    pause (1800)//   TODO adjust based on actual response
+	    notfoundevt(s)
+    }
+}
+
+
+def notfoundevt(String s){
+	if (state.continue==true){
+		state.continue = false
+		log ("Already exists ${s}","WARN")
+	return
+	}
+	else {
+		log ("Time out on getTopic ${s}","WARN")
+		sendEvent(name: "getTopic", value: '#NoNe#', data: [state: "", topic: s], isStateChange: true)
+	}
+	
+}
+
+def heartbeat (seqNum=0) {
+    interfaces.mqtt.publish("homie/${state.normHubName}" + '/$implementation/heartbeat',state.seqNum.toString(),1,true)
+    log ("Sending heartbeat [$state.seqNum]", "LOG")
+    state.seqNum++
+}
+
+
+def bufferEmpty(i){
+    log  ("MQTT message queue idle","ERROR")
+}
+
+// Key method Handles all the data back from MQTT subscriptions
+def parse(String description) {
+    delay = state.delay
+    runIn (30, "bufferEmpty")
+    topicFull=interfaces.mqtt.parseMessage(description).topic
+	def topic=topicFull.split('/')
+	def topicCount=topic.size()
+	def payload=interfaces.mqtt.parseMessage(description).payload.split(',')
+    //state.ack[state.seq2]=0"
+    rxMsg= "MQTT>RX:[$state.seq2]  [${interfaces.mqtt.parseMessage(description).payload}]  ${interfaces.mqtt.parseMessage(description).topic}"
+    if (topicFull.startsWith('homie/'+state.normHubName+'/$implementation/heartbeat')) {
+        log (payload[0] + "              " + rxMsg,"LOG")
+        num1=payload[0].toInteger()
+        num2=state.seqNum
+        if (num1==num2-1) {
+            
+            if (state.waiting!= "none" ) log ("Waiting for $state.waiting .. but it appears there is no queue:-) ","RED")
+    }
+    }   
+    else if (topicFull.startsWith('homie/'+state.normHubName+'/$fw')) log ( "              " + rxMsg,"KH")
+    //else log ( "              " + rxMsg,"GREEN")
+    // TODO make more use of topicCount for topic validation - some topics that currently match have further subTopics
+	// Potential bug TODO - if we set up a virtual device to import to HE and it matches here 'early' it wont be onwardly passed to HE
+
+  
+    if (topic[0]==state.topic0){
+        if ((topic[1]==state.topic1) || (state.topic1=='+')|| (state.topic1=='#')){
+            if ((topic[2]==state.topic2) || (state.topic2=='+') || (state.topic2=='#')){
+                //if ((topic[3]==state.topic3) || (state.topic3=='*')){
+                state.seq2++
+                sequence=state.seq2.toString()
+
+                log ("Wildcard Match : got some topic details back from ${topic} : ${payload}", "INFO")
+                def evt44 = createEvent(name: "WildcardTopics", value: interfaces.mqtt.parseMessage(description).topic,data:[seq: sequence], isStateChange: true)
+                return evt44
+               // }
+            }
+        }
+    }
+   
+    if (topic[0]==state.HAStatestreamTopic) {  //HA
+ 
+			if (topic[1]=='status') {  // HA LWT
+                ack=false
+				if (payload[0]=="online") {
+					log ("Home Assistant [${state.HAStatestreamTopic}] is ONLINE","INFO")
+					def evt23 = createEvent(name: "HASynch", value: state.HAStatestreamTopic, isStateChange: true)
+					//pause(delay)
+                    //state.dispatch = now()
+                    return evt23
+				}
+				else if (payload[0]=="offline") {
+					log ("Home Assistant [${state.HAStatestreamTopic}] is OFFLINE","INFO")
+				}
+				return
+			}
+			else if (topic[1]=='sensor') {
+                state.seq2++
+                sequence=state.seq2.toString()
+				if (topic[3]=='state'){
+				//log ("RX::Sensor state::  " + topic[2] + " is " + payload[0], "TRACE")
+				def evt10 = createEvent(name: "Sensor", value: topic[2], data: [status: payload[0],seq: sequence, update: true], isStateChange: true)  //, key2: payload])
+				pause (delay) // pace
+				state.dispatch = now()
+                return evt10
+				}
+                else if (topic[3]=='device_class'){
+                log ("### [" + payload[0] +"] type for HA Sensor Device ${topic[2]}", "TRACE")
+				def evt11= createEvent(name: "HASensorType", value: topic[2], data: [payload: deQuote(payload[0]),seq: sequence], isStateChange: true)
+				pause (delay) // pace
+				state.dispatch = now()
+                return evt11
+				}
+				else if (topic[3]=='friendly_name'){
+				log ("Device ${topic[2]} is a HA sensor and is called " +payload[0], "TRACE")
+				def evt11= createEvent(name: "HASensorDev", value: topic[2], data: [label: deQuote(payload[0]),seq: state.sequence], isStateChange: true)
+				pause (delay) // pace
+                state.dispatch = now()
+				return evt11
+				}
+				else if (topic[3]=='unit_of_measurement'){ 
+				def evt11= createEvent(name: "SensorUnit", value: topic[2], data: [payload: deQuote(payload[0]),seq: state.sequence], isStateChange: true)
+				pause (delay) // pace
+                state.dispatch = now()
+				return evt11
+				}
+
+			}
+			
+			else if (topic[1]=='binary_sensor') {
+            state.seq2++
+            sequence=state.seq2.toString()
+
+				if (topic[3]=='state'){
+				//log ("RX::Binary Sensor state::  " + topic[2] + " is " + payload[0], "TRACE")
+				def evt10 = createEvent(name: "BinarySensor", value: topic[2], data: [status: payload[0],seq: sequence, update: true], isStateChange: true)  //, key2: payload])
+				pause (delay) // pace
+                state.dispatch = now()
+				return evt10
+				}
+				else if (topic[3]=='friendly_name'){ 
+				log ("Device ${topic[2]} is a HA binary sensor and is called " +payload[0], "TRACE")
+				def evt19 = createEvent(name: "LabelDevice", value: "MQTT:HA_"+topic[2], data: [label: deQuote(payload[0]),seq: sequence], isStateChange: true)
+				 //return evt19
+				// just renames the device as creation now from 'device_class  // need to ensure device_class arrives first so driver is correct when created
+				//def evt19= createEvent([name: "HABinarySensorDev", value: topic[2], data: [label: payload[0]]])
+				pause (delay) // pace // pace  // maybe extend this if needed to ensure above
+				state.dispatch = now()
+                return evt19
+				}
+				else if (topic[3]=='device_class'){ 
+                log ("### [" + payload[0] +"] type for HA Binary Sensor Device ${topic[2]}", "TRACE")
+				//log ("### Device ${topic[2]} is a HA binary sensor and is of type " +payload[0], "INFO")
+				// create device from here as need device_class to select driver
+				def evt18= createEvent(name: "HABinarySensorDev", value: topic[2], data: [type: deQuote(payload[0]),seq: sequence], isStateChange: true)  // TODO handle in app
+				pause (delay) // pace
+				state.dispatch = now()
+                return evt18
+				}
+			}
+
+		else if (topic[1]=='switch') {
+            state.seq2++
+            sequence=state.seq2.toString()
+			if (topic[3]=='friendly_name') {
+				log ("Device ${topic[2]} is a HA switch and is called " +payload[0], "TRACE")
+				def evt3= createEvent(name: "HASwitchDev", value: topic[2], data: [label: deQuote(payload[0]),seq: sequence], isStateChange: true)
+				pause (delay) // pace
+				state.dispatch = now()
+                return evt3
+			}
+			else if (topic[3]=='state'){
+				def evt4 = createEvent(name: "OnOff", value: topic[2], data: [status: payload[0],seq: sequence, update: true], isStateChange: true)  //, key2: payload])
+				pause (delay) // pace
+				state.dispatch = now()
+                return evt4
+			}
+            pause (delay) // pace
+            def evt57 = createEvent(name: "HAUnknown", value: topic[2], data: [status: payload[0]],seq: sequence, isStateChange: true)  //, key2: payload]
+			log ("Unhandled HA (a) switch MQTT parse  ${topic[0]}  ${topic[1]}  ${topic[2]}  ${topic[3]} - ${payload[0]}", "WARN")
+			state.dispatch = now()
+            return evt57
+		}
+			
+		else if (topic[1]=='group') {
+            state.seq2++
+            sequence=state.seq2.toString()
+			if (topic[3]=='friendly_name') {
+				log ("Device ${topic[2]} is a HA group and is called " +payload[0], "TRACE")
+				def evt3= createEvent(name: "HAGroupDev", value: topic[2], data: [label: deQuote(payload[0]),seq: sequence], isStateChange: true)
+				pause (delay) // pace
+				state.dispatch = now()
+                return evt3
+			}
+			else if (topic[3]=='state'){
+				def evt4 = createEvent(name: "Group", value: topic[2], data: [status: payload[0],seq: sequence, update:true], isStateChange: true)  //, key2: payload])
+				pause (delay) // pace
+				//log ("Device ${topic[2]} is a HA group and is turned " +payload[0], "TRACE")
+				state.dispatch = now()
+                return evt4
+			}
+			log ("Unhandled HA (b) group MQTT parse  ${topic[0]}  ${topic[1]}  ${topic[2]}  ${topic[3]} - ${payload[0]}", "WARN")
+            pause (delay) // pace
+            def evt58 = createEvent(name: "HAUnknown", value: topic[2], data: [status: payload[0]], isStateChange: true)  //, key2: payload]
+            state.dispatch = now()
+            return evt58
+		}
+			
+		else if (topic[1]=='input_boolean') {
+            state.seq2++
+            sequence=state.seq2.toString()
+			if (topic[3]=='friendly_name') {
+				log ("Device ${topic[2]} is a HA input boolean and is called " +payload[0], "TRACE")
+				def evt3= createEvent(name: "HAInputBooleanDev", value: topic[2], data: [label: deQuote(payload[0]),seq: sequence], isStateChange: true)
+				pause (delay) // pace
+				state.dispatch = now()
+                return evt3
+			}
+			else if (topic[3]=='state'){
+				def evt4 = createEvent(name: "InputBoolean", value: topic[2], data: [status: payload[0],seq: sequence,update: true,,topic: topicFull], isStateChange: true)  //, key2: payload])
+				pause (delay) // pace
+				log ("Device ${topic[2]} is a HA input boolean and is " +payload[0], "TRACE")
+				state.dispatch = now()
+                return evt4
+			}
+			log ("Unhandled HA (b) input_boolean MQTT parse  ${topic[0]}  ${topic[1]}  ${topic[2]}  ${topic[3]} - ${payload[0]}", "WARN")
+            pause (delay) // pace
+            def evt58 = createEvent(name: "HAUnknown", value: topic[2], data: [status: payload[0],seq: sequence], isStateChange: true)  //, key2: payload]
+            state.dispatch = now()
+            return evt58
+		}
+        else if (topic[1]=='climate') {
+            state.seq2++
+            sequence=state.seq2.toString()
+			if (topic[3]=='friendly_name') {
+				log ("Device ${topic[2]} is a HA climate device and is called " +payload[0], "TRACE")
+				def evt3= createEvent(name: "HAClimateDev", value: topic[2], data: [label: deQuote(payload[0]),seq: sequence], isStateChange: true)
+				pause (delay) // pace
+				state.dispatch = now()
+                return evt3
+			}
+			else if (topic[3]=='state'){
+				def evt4 = createEvent(name: "InputBoolean", value: topic[2], data: [status: payload[0],update: true, seq: sequence], isStateChange: true)  //, key2: payload]) // TODO CHECK WRONG - r-eenable
+				pause (delay) // pace
+				log ("Device ${topic[2]} is a HA climate device and is " +payload[0], "TRACE")
+				state.dispatch = now()
+                return evt4
+			}
+			log ("Unhandled HA (b) climate MQTT parse  ${topic[0]}  ${topic[1]}  ${topic[2]}  ${topic[3]} - ${payload[0]}", "WARN")
+            pause (delay) // pace
+            def evt59 = createEvent(name: "HAUnknown", value: topic[2], data: [status: payload[0],seq: sequence], isStateChange: true)  //, key2: payload]
+            state.dispatch = now()
+            return evt59
+		}
+        else if (topic[1]=='device_tracker') {
+            state.seq2++
+            sequence=state.seq2.toString()
+			if (topic[3]=='friendly_name') {
+				log ("Device ${topic[2]} is a HA tracker device and is called " +payload[0], "TRACE")
+				def evt3= createEvent(name: "HADeviceTrackerDev", value: topic[2], data: [label: deQuote(payload[0]),seq: sequence], isStateChange: true)
+				pause (delay) // pace
+				state.dispatch = now()
+                return evt3
+			}
+			else if (topic[3]=='state'){
+				def evt4 = createEvent(name: "InputBoolean", value: topic[2], data: [status: payload[0], update: true], isStateChange: true)  //, key2: payload]) // TODO CHECK WRONG
+				pause (delay) // pace
+				//log ("Device ${topic[2]} is a HA input boolean and is " +payload[0], "TRACE")
+				state.dispatch = now()
+                return evt4
+			}
+			log ("Unhandled HA (b) device_tracker MQTT parse  ${topic[0]}  ${topic[1]}  ${topic[2]}  ${topic[3]} - ${payload[0]}", "WARN")
+            pause (delay) // pace
+            def evt60 = createEvent(name: "HAUnknown", value: topic[2], data: [status: payload[0],seq: sequence], isStateChange: true)  //, key2: payload]
+            state.dispatch = now()
+            return evt60
+		}
+         else if (topic[1]=='cover') {
+            state.seq2++
+            sequence=state.seq2.toString()
+			if (topic[3]=='friendly_name') {
+				log ("Device ${topic[2]} is a HA cover and is called " +payload[0], "TRACE")
+				def evt3= createEvent(name: "HACoverDev", value: topic[2], data: [label: deQuote(payload[0]),seq: sequence], isStateChange: true)
+				pause (delay) // pace
+				state.dispatch = now()
+                return evt3
+			}
+			else if (topic[3]=='state'){
+				def evt4 = createEvent(name: "Cover", value: topic[2], data: [status: payload[0], update: true], isStateChange: true)  //, key2: payload]) // TODO CHECK WRONG
+				pause (delay) // pace
+				log ("Device ${topic[2]} is a HA cover and is " +payload[0], "TRACE")
+				state.dispatch = now()
+                return evt4
+			}
+            else if (topic[3]=='current_position'){
+				def evt4 = createEvent(name: "Dim", value: topic[2], data: [level: payload[0]],seq: sequence, isStateChange: true)  //, key2: payload]) // Dim works because cover accepts both set level and set position
+				pause (delay) // pace
+				log ("Device ${topic[2]} is a HA cover and is at position " +payload[0], "TRACE")
+				state.dispatch = now()
+                return evt4
+			}
+			log ("Unhandled HA (b) cover MQTT parse  ${topic[0]}  ${topic[1]}  ${topic[2]}  ${topic[3]} - ${payload[0]}", "WARN")
+            pause (delay) // pace
+            def evt61 = createEvent(name: "HAUnknown", value: topic[2], data: [status: payload[0]],seq: sequence, isStateChange: true)  //, key2: payload]
+            return evt61
+		}
+        else if (topic[1]=='locks') {
+            state.seq2++
+            sequence=state.seq2.toString()
+			if (topic[3]=='friendly_name') {
+				log ("Device ${topic[2]} is a HA lock and is called " +payload[0], "TRACE")
+				def evt3= createEvent(name: "HALockDev", value: topic[2], data: [label: deQuote(payload[0])],seq: sequence, isStateChange: true)
+				pause (state.delay) // pace
+				state.dispatch = now()
+                return evt3
+			}
+			else if (topic[3]=='state'){
+				def evt4 = createEvent(name: "InputBoolean", value: topic[2], data: [status: payload[0],seq: sequence, update: true], isStateChange: true)  //, key2: payload])  // TODO CHECK WRONG
+				pause (delay) // pace
+				//log ("Device ${topic[2]} is a HA lock and is " +payload[0], "TRACE")
+				state.dispatch = now()
+                return evt4
+			}
+			log ("Unhandled HA (b) lock MQTT parse  ${topic[0]}  ${topic[1]}  ${topic[2]}  ${topic[3]} - ${payload[0]}", "WARN")
+            pause (delay) // pace
+            def evt61 = createEvent(name: "HAUnknown", value: topic[2], data: [status: payload[0],seq: sequence], isStateChange: true)  //, key2: payload]
+            state.dispatch = now()
+            return evt61
+
+		}
+		else if (topic[1]=='light') { 
+            state.seq2++
+            sequence=state.seq2.toString()
+			if (topic[3]=='friendly_name')
+			{
+				friendlyName=payload[0]
+				if (friendlyName[0]=='"')  // remove double quotes
+					{
+						friendlyName=friendlyName.substring(1)
+						friendlyName=friendlyName.substring(0, friendlyName.length() - 1)
+				}
+				log ("Device ${topic[2]} is a HA light and is called " +payload[0] + " " + friendlyName,"TRACE")
+				def evt5= createEvent(name: "HALightDev", value: topic[2], data: [label: deQuote(friendlyName),seq: sequence], isStateChange: true)
+				pause (delay) // pace
+				state.dispatch = now()
+                return evt5
+			}
+			else if (topic[3]=='state'){
+				def evt6 = createEvent(name: "OnOff", value: topic[2], data: [status: payload[0],seq: sequence, update: true], isStateChange: true)  //, key2: payload])
+				pause (delay) // pace
+				state.dispatch = now()
+                return evt6
+			}
+			else if (topic[3]=='brightness'){
+				float dLevel = Float.parseFloat(payload[0])/2.55
+				int iLevel = (int) dLevel.round()
+				sLevel=iLevel.toString()
+				def evt9 = createEvent(name: "Dim", value: topic[2], data: [level: sLevel], isStateChange: true)
+				pause (delay) // pace
+				state.dispatch = now()
+                return evt9
+			}
+			log ("Unhandled HA (c) light MQTT parse  ${topic[0]}  ${topic[1]}  ${topic[2]}  ${topic[3]} - ${payload[0]}", "WARN")
+                pause (delay) // pace
+                def evt62 = createEvent(name: "HAUnknown", value: topic[2], data: [status: payload[0],seq: sequence], isStateChange: true)  //, key2: payload]
+                state.dispatch = now()
+                return evt62
+		}  // not a HA light
+            
+        else if (topic[1]=='person') {
+            state.seq2++
+            sequence=state.seq2.toString()
+			if (topic[3]=='friendly_name') {
+				log ("Device ${topic[2]} is a HA person and is called " +payload[0], "TRACE")
+				def evt43= createEvent(name: "HAPerson", value: topic[2], data: [label: deQuote(payload[0])], isStateChange: true)
+				pause (delay) // pace
+				state.dispatch = now()
+                return evt43
+			}
+			else if (topic[3]=='state'){
+				def evt44 = createEvent(name: "person", value: topic[2], data: [status: payload[0],seq: sequence, update: true], isStateChange: true)  //, key2: payload])
+				pause (delay) // pace
+				//log ("Device ${topic[2]} is a HA input boolean and is " +payload[0], "TRACE")
+				state.dispatch = now()
+                return evt44
+			}
+			log ("Unhandled HA (b) person MQTT parse  ${topic[0]}  ${topic[1]}  ${topic[2]}  ${topic[3]} - ${payload[0]}", "WARN")
+            def evt63 = createEvent(name: "HAUnknown", value: topic[2], data: [status: payload[0],seq: sequence], isStateChange: true)  //, key2: payload]
+			pause (delay) // pace
+            state.dispatch = now()
+            return evt63
+		}
+            
+            
+            
+            
+            /* The following are not supported yet:
+                        device_tracker
+                        automation
+                        climate *
+                        lock
+                        media_player *
+                        persistent_notification
+                        person
+                        sun
+                        updater
+                                * complex as many text attributes and interactions
+            */
+                        
+			log ("Unhandled (d) HA MQTT parse  ${topic[0]}  ${topic[1]}  ${topic[2]}  ${topic[3]} - ${payload[0]}", "WARN")
+            pause (delay) // pace
+            def evt64 = createEvent(name: "HAUnknown", value: topic[2], data: [status: payload[0],seq: sequence], isStateChange: true)  //, key2: payload]
+            state.dispatch = now()
+            return evt64
+    } // not HA
+	
+    
+/*    
+	else if (topic[0]=="Hubitat" && topic[1]== "${state.hubName}"){ //local - look for incoming 'set' commands on Hubitat topic that control Hubitat devices here	
+        
+        if (topic[4]=="set") {
+                 state.seq2++
+                 sequence=state.seq2.toString()
+
+				 def evt12 = createEvent(name: "Command", value: topic[2], data: [state: payload[0], payload: payload,seq: sequence, cmd: topic[3], topic: interfaces.mqtt.parseMessage(description)], isStateChange: true)
+				 pause (delay) // pace
+			     log ("Received this " + payload + "  " + payload.size(), "TRACE")
+				 state.dispatch = now()
+                 return evt12					
+				}
+				else {
+					log ("Received unexpected message from homie " + topic + " " + payload, "WARN")
+				}
+			}// not Hubitat local control
+*/
+
+	
+	
+	
+	else if (topic[0]=="homie" && topic[1]== "${state.normHubName}"){ //local - look for incoming 'set' commands that control Hubitat devices here
+        log ("Received this message from homie " + topic + " " + payload, "TRACE")
+            state.seq2++
+            sequence=state.seq2.toString()
+
+		if (topicCount==6) {   // rather than these why not just check last topic  - endsWith("/set")
+			if ((topic[5]=="set")&&(topic[4]=="rgb")) {
+				def evt12 = createEvent(name: "Command", value: topic[2], data: [state: payload[0], payload: payload, seq: sequence, cmd: topic[3],topic: interfaces.mqtt.parseMessage(description)], isStateChange: true)
+				log ("Received this " + payload + "  " + payload.size(), "TRACE")
+				pause (delay) // pace
+                state.dispatch = now()
+                return evt12					
+			}
+        }      
+        else if (topicCount==5) { 
+			if (topic[4]=="set") {
+				def evt12 = createEvent(name: "Command", value: topic[2], data: [state: payload[0], payload: payload,seq: sequence, cmd: topic[3],topic: interfaces.mqtt.parseMessage(description)], isStateChange: true)
+				log ("Received this " + payload + "  " + payload.size(), "TRACE")
+				pause (delay) // pace
+                state.dispatch = now()
+                return evt12					
+			}
+			else {
+				log ("Received unexpected message from homie " + topic + " " + payload, "WARN")
+			}
+		}
+		else if (topicCount==4) {
+			if (topic[3]=='$properties'){     // This will be a response to a 'getMQTT' for the $properties of an inbuilt device to append to.
+				state.seq2++
+                sequence=state.seq2.toString()
+                // for first node will be blank so never get here- need to init elsewhere
+				log ("UNSUBSCRIBE from ${interfaces.mqtt.parseMessage(description).topic}","DEBUG")
+				//interfaces.mqtt.unsubscribe(interfaces.mqtt.parseMessage(description).topic)
+                unsubscribe(interfaces.mqtt.parseMessage(description).topic)
+                sendEvent (name: "Subscribes", value: --state.subs)
+				
+				log ("Timeout cancelled as got a property response  ${payload}   ${payload[0]}  from  ${topic}","DEBUG")
+				def evt23 = createEvent(name: "getTopic", value: topic[2], data: [state: payload,seq: sequence, topic: interfaces.mqtt.parseMessage(description).topic], isStateChange: true)
+				pause (delay) // pace
+                state.dispatch = now()
+                return evt23
+			}
+            
+           if (topic[2]=='$fw') {  // This is a random (non updating) topic used to pace the progress of subscriptions
+            if (topic[3]=='name') {
+                //log ("<b style = 'color: blue'>============ homie Discovery has completed ============</b>","INFO")
+                if (state.waiting=="name") {
+                    log  ("============ Asking HA Discovery to start  ============","INFO")
+                    sendEvent(name: "HADiscoverStart", value: 'HAstart',isStateChange: true)
+                    state.waiting='none'
+                    unsubscribeTopic ('homie/'+state.normHubName+'/$fw/name')
+                }
+
+                else {
+                     log ("Received pacing 'name' but expected $state.waiting", "ERROR")
+                    //unsubscribeTopic ('homie/development/$fw/name')
+                
+                   // def evt99 = createEvent (name: "startHADiscovery", value: "true", data: [seq: sequence], isStateChange: true)
+                   // def evt73 = createEvent (name: "HA", value: 2, isStateChange: true)
+/*
+                    state.seq2++
+                    sequence=state.seq2
+                    state.dispatch = now()
+*/
+                    log  ("====== Regardless still asking HA Discovery to start  ========","INFO")
+                    sendEvent(name: "HADiscoverStart", value: 'HAstart',isStateChange: true) 
+                }
+            }//name
+               
+               
+            else if (topic[3]=='client') {
+                if (state.waiting=="client") {
+                    log  ("============ Asking HA Discovery to start  ============","INFO")
+                    state.waiting='none'
+                    log ("============ Unsubscribing from HA friendly_names ============","INFO")
+                    sendEvent(name: "unsubscribeFriendly", value: "true",isStateChange: true)
+                    unsubscribeTopic ('homie/'+state.normHubName+'/$fw/client')
+                }
+                else {
+                    log ("Received pacing 'client' but expected $state.waiting", "ERROR")
+
+                    log ("======= Regardless still unsubscribing from HA friendly_names ========","INFO")
+                    
+/*
+                    state.seq2++
+                    sequence=state.seq2
+                    state.dispatch = now()
+*/
+                    sendEvent(name: "unsubscribeFriendly", value: "true",isStateChange: true) 
+                }
+            } //client
+            else if (topic[3]=='version') {
+
+                log ("============   HA Discovery has completed   =============","INFO")
+                if (state.waiting=="version") {
+                    log  ("============ Asking Startup Summary to run  ============","INFO")
+                    state.waiting='none'
+                    sendEvent(name: "HADiscoverStart", value: 'complete',isStateChange: true)
+                    unsubscribeTopic ('homie/'+state.normHubName+'/$fw/version')
+                }
+                else {
+                    log ("Received pacing 'version' but expected $state.waiting", "ERROR")
+                    log ("========  Regardless HA Discovery has completed   =============","INFO")
+                    log ("======== Regardless asking Startup Summary to run ============","INFO")
+                    sendEvent(name: "HADiscoverStart", value: 'complete',isStateChange: true) 
+                }
+
+            } //version
+
+        } // not $fw
+	}  //topiccount 4
+    } // not local homie message	
+	
+	
+	else if (topic[0]=="homie" && topic[1]== state.homieDeviceDiscovery)  {   // remote subscribed homie) 
+        log ("homie discovery","TRACE")
+		if (topic[2]=='$nodes') {  // can I pass this directly to the input selector ??
+			log ("============= ${payload.size()} homie entries for device ${topic[1]} =============",, "INFO")
+			return
+		}
+
+		if (topic[3]=='onoff') {
+            state.seq2++
+            sequence=state.seq2.toString()
+			def evt1 = createEvent(name: "OnOff", value: topic[2], data: [status: payload[0],seq: sequence, topic:interfaces.mqtt.parseMessage(description).topic], isStateChange: true)  //, key2: payload])
+			pause (delay) // pace
+            state.dispatch = now()
+            return evt1
+		}
+
+		else if (topic[3]=='dim' && topicCount==4) {  // TODO is this level handling problematic assuming 1.0 ?
+			float convertedNumber = Float.parseFloat(payload[0])*100
+			int intLevel = convertedNumber = convertedNumber.round()
+            state.seq2++
+            sequence=state.seq2.toString()
+			adjLevel=intLevel.toString()
+			def evt2 = createEvent(name: "Dim", value: topic[2], data: [state: "level", seq: sequence, level: adjLevel, topic: interfaces.mqtt.parseMessage(description).topic], isStateChange: true)
+            pause (delay) // pace
+			state.dispatch = now()
+            return evt2
+		}
+
+		else if (topic[3]=='$type') {
+			//log ("Got a type of " + payload[0] + " for " + topic, "INFO")
+            state.seq2++
+            sequence=state.seq2.toString()
+			switch (payload[0]) {
+
+				case 'switch':
+					def evt33 = createEvent(name: "OnOffDev", value: topic[2], data: [seq: sequence], isStateChange: true)
+					break
+				case 'light':
+                case 'RGBT light':
+                case 'RGB light':
+					evt33 = createEvent(name: "DimDev", value: topic[2], data: [seq: sequence], isStateChange: true)
+					break
+				case 'sensor':
+					evt33 = createEvent(name: "SensorDev", value: topic[2], data: [seq: sequence], isStateChange: true)
+					break
+				case 'thermostat':
+					log ("homie " + payload[0] +" type not handled yet for device: "+ topic,"WARN")
+                    evt33 = createEvent(name: "HEUnknown", value: topic[2], data: [seq: sequence], isStateChange: true)
+					break
+				case 'socket':
+					evt33 = createEvent(name: "OnOffDev", value: topic[2], data: [seq: sequence], isStateChange: true)
+					break
+                case 'button':
+					evt33 = createEvent(name: "ButtonDev", value: topic[2], data: [seq: sequence], isStateChange: true)
+					break
+                case 'variable':
+                    evt33 = createEvent(name: "VariableDev", value: topic[2], data: [seq: sequence], isStateChange: true)
+                    break
+				default:			
+					log ("homie " + payload[0] +" type not handled for device: "+ topic[2],"WARN")
+                    evt33 = createEvent(name: "HEUnknown", value: topic[2], data: [seq: sequence], isStateChange: true)
+					break
+			}
+				pause (delay) // pace  //TODO optimise (remove hopefully)
+                log ("Registering homie device ${topic[2]} of type ${payload[0]} ","DEBUG")
+            pause (delay) //pace
+            state.dispatch = now()
+            return evt33  // TODO - need to sure it exists .. OK to return from here inside an else ?  isStateChange: true needed otherwise if no change to value: event is sent
+		}
+        
+		else if (topic[3]=='$name') {  
+            state.seq2++
+            sequence=state.seq2.toString()
+			 log("Received homie name from MQTT ${topic[2]} " + status, "TRACE")
+			 def evt0 = createEvent(name: "LabelDevice", value: "MQTT:homie_"+topic[2], data: [label: payload[0],seq: sequence], isStateChange: true)
+			 pause (delay) // pace 
+			 state.dispatch = now()
+             return evt0
+		 }
+        else if (topicCount==5)
+            {
+            if (topic[4]=='$unit') { 
+            state.seq2++
+            sequence=state.seq2.toString()
+            log ( "--$state.seq2--   - mS","DEBUG")
+			 log("Received homie UOM from MQTT ${topic[2]} " + status, "TRACE")
+			 //def evt0 = createEvent(name: "LabelDevice", value: "MQTT:homie_"+topic[2], data: [label: payload[0],seq: sequence], isStateChange: true)
+			 pause (delay) // pace 
+			 state.dispatch = now()
+            // return evt0
+		 }
+         }
+        else log ("Unhandled" + topic,"WARN")
+	} // end remote homie
+    
+    else if (topic[0]=='shellies')
+    {
+            //if (topic[2] == "online") log.error "Found Shelly device ${topic[1]}"  // This is not a retained or periodically updated topic and used for LWT
+        if (topic[2] == "online" | topic[2] == "onlineRet") {
+            if (payload[0] == "true") {
+               state.seq2++
+               sequence=state.seq2.toString()
+
+                 log  ("Found Shelly device ${topic[1]}", "DEBUG")
+                // We need to determine how many relays and other endpoints there are
+                 def evt47 = createEvent(name: "ShellyDevice", value: topic[1],data:[seq: sequence], isStateChange: true)
+                 //def evt47 = createEvent(name: "ShellyRelayDev", value: topic[1], isStateChange: true)
+               	pause (delay) // pace
+                state.dispatch = now()
+				return evt47
+            }
+            else if (payload[0] == "false") log  ("Shelly device ${topic[1]} is offline", "WARN")
+        }
+        
+        else if (topicCount>3) {
+            if (topic[3] == "input") {
+                //log.info "Sonoff Input"    
+            }
+            else if (topic[3] == "relay"){
+                //log.info "Sonoff Relay" 
+            }
+        }
+        return
+    }
+
+	else {  // unhandled parse messages arrive here
+        state.seq2++
+        sequence=state.seq2.toString()
+
+		log ("ad hoc MQTT parse  ${interfaces.mqtt.parseMessage(description).topic}       ${payload[0]}", "DEBUG")
+        pause (delay) // pace
+        state.dispatch = now()
+		sendEvent (name: "Lookup", value: payload[0], data: [topic: interfaces.mqtt.parseMessage(description).topic,seq: sequence,], isStateChange: true) 
+
+	}
+}
+
+def deQuote (s) {
+ 	s=s.replaceAll('^\"|\"$', "")
+	return s
+}
+
+def reset()
+	{
+       // if (state.connected==false) {
+        try {
+        	interfaces.mqtt.disconnect()
+        } catch(e) {
+        log ("Disconnect : ${e.message}", "WARN")
+        }
+		log ("Resetting MQTT connection", "INFO")
+		initialize()
+ /*
+        Now resetting anyway to clear MQTT buffers and subscription
+        }
+        else {
+           log ("Ignoring reset because MQTT appears to be already connected ","WARN")   // TODO maybe take down interface and reconnect ?
+           
+            sendEvent(name: "MQTTStatus", value: "Online", data: [message:"Connected"], isStateChange: true)  // allow continue
+        }
+*/
+	}
+	
+def setStateVar(var,value,value2=null) {	// Better to expose as attributes  TODO change some of these is need read access
+	if (var == "logLevel"){
+		state.logLevel = value.toInteger()
+		log ("Log Level set to " + value,"INFO")
+	}
+	else if (var == "homieDevice"){
+		state.homieDeviceDiscovery = value
+		log ("homie discovery is for device: " + value, "INFO")
+	}
+	else if (var == "HAStatestreamTopic"){
+		state.HAStatestreamTopic = value
+		log ("HAStatestreamTopic is " + value,"INFO")
+	}
+    else if (var == "connectionAttempts"){
+		state.connectionAttempts = value
+		log ("ConnectionAttempts reset to " + value ,"INFO")
+	}
+	else if (var == "normHubName") {
+		state.normHubName = value
+		state.hubName=value2
+		log ("Normalised ${state.hubName} hub name is ${state.normHubName}","INFO")	
+	}
+	else if (var == "MQTTmyStatus") {
+		sendEvent (name: "presence", value: value)
+				   log ("Reporting broker status as ${value}","INFO")
+	}
+		else log ("Tried to set a non supported state variable in MQTT client ${var}","ERROR")
+}
+
+/*   // This was for when using device children
+def createChild (String Name)  // For child devices of this device
+	{
+	log ("Is this createChild ever called ??", "ERROR ")
+	//deleteChildDevice("MQTT-"+ Name)	
+	try { 
+   		addChildDevice("ukusa", "MQTT Switch", "MQTT-"+Name, [name: Name, isComponent: false])	
+	} catch(Exception ex) {
+      	//log ("addChild failed for " +Name + " " +(ex.toString()), "DEBUG")
+}	
+	//addChildDevice("ukusa", "MQTT Switch", "MQTT-"+Name, [name: Name, isComponent: false])	
+	}
+
+def deleteChild (String Name) // For child devices of this device
+	{
+	log ("Deleting child MQTT-${Name}", "DEBUG")
+	deleteChildDevice("MQTT-"+ Name)
+	}
+
+def setStateTopic (String Name, String Topic)
+{
+	log ("Setting state topic for " + Name + " " + Topic, "TRACE")
+	def child= getChildDevice("MQTT-"+Name)
+	//log ("Child device id: $child.id", "TRACE")
+	// TODO only do this if valid id
+	child.setStateTopic(Topic)
+}
+def setCommandTopic (String Name, String Topic)
+{
+	//return
+	log ("Setting state topic for " + Name + " " + Topic, "TRACE")
+	def child= getChildDevice("MQTT-"+Name)
+	//log ("Child device id: $child.id", "TRACE")
+	// TODO only do this if valid id
+	child.setCommandTopic(Topic)
+}
+*/
+
+def pause(millis) {
+	pauseExecution(millis.toInteger())	
+}
+
+def log(data, type) {
+
+	data = "MQTT> ${data ?: ''}"
+    if (determineLogLevel(type) >= state.logLevel) {
+        switch (type?.toUpperCase()) {
+            case "TRACE":
+                log.trace "${data}"
+                break
+            case "DEBUG":
+                log.debug "${data}"
+                break
+            case "INFO":
+                log.info "${data}"
+                break
+            case "WARN":
+                log.warn "${data}"
+                break
+            case "ERROR":
+                log.error "${data}"
+                break
+			case "DISABLED":
+			    break
+            case "BLUE":
+                log.info "<font color='blue'>${data}</font>"
+                break
+            case "RED":
+                log.info "<font color='red'>${data}</font>"
+                break
+            case "ORANGE":
+                log.info "<font color='orange'>${data}</font>"
+                break
+            case "GREEN":
+                log.info "<font color='green'>${data}</font>"
+                break
+            case "YELLOW":
+                log.info "<font color='yellow'>${data}</font>"
+                break
+            case "KH":
+                 if (state.normHubName=="development") log.trace "<font color='red'>${data}</font>"
+                 break
+            case "LOG":
+                 if (state.normHubName=="development") log.trace "<font color='blue'>${data}</font>"
+                 break
+            default:
+                log.error "MQTT -- ${device.label} -- Invalid Log Setting"
+        }
+    }
+}
+
+private determineLogLevel(data) {
+    switch (data?.toUpperCase()) {
+        case "TRACE":
+            return 0
+            break
+        case "DEBUG":
+            return 1
+            break
+        case "INFO":
+            return 2
+            break
+        case "WARN":
+            return 3
+            break
+        case "ERROR":
+        	return 4
+            break
+		case "DISABLED":
+		    return 5
+		    break
+        case "RED":
+        case "BLUE":
+        case "GREEN":
+        case "YELLOW":
+        case "ORANGE":
+        case "LOG":
+        case "KH":
+            return 6
+            break
+        default:
+            return 1
+    }
+}
+
