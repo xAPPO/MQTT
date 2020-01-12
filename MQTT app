@@ -1,6 +1,6 @@
 /*
 
-  Copyright Kevin Hawkins 2019     apps@ukusa.co.uk
+  Copyright Kevin Hawkins 2019 / 2020     apps@ukusa.co.uk
 
   RESTRICTED LICENCE:
   See associated licence file.
@@ -12,7 +12,7 @@
 
   Logging code was adapted from Eric Vitale's ST LIFX application, with thanks.  Copyright 2016 ericvitale@gmail.com
 
-  Many thanks for contributions from Casey, Jeff, Cody and more. Much appreciated.
+  Many thanks for contributions from Casey, Jeff, Cody, Kirk, Andy and more. Much appreciated.
 
   Support via 'invite' Hubitat community alpha5 thread   
 
