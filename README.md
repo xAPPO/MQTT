@@ -192,7 +192,7 @@ ________________________________________________________________________________
 
 # d) Enable automatic discovery and selected inclusion of devices* using the homie3 protocol (promoted by openHAB)
 
-    On the third page of the app entitled  
+On the third page of the app entitled  
     "MQTT Discovery Protocols > HE"
         'homie' and enable the homie 3 protocol
     	Enter the top level name of the homie 'device' you wish to use in 'Homie Device Topic Name'
@@ -352,7 +352,7 @@ Enabling this will purge your drop down lists from devices that have been discov
 	
 # Complete and Compliant Homie Topics	
 
-This option publishes a minimal but non 'homie3/4' compliant homie/ tree . It is simpler essentiallyy only presenting state values for device attributes that also (if settable) can be updated by appending /set to the end of the topic and publishing an 'allowable' payload.  This likely works for HA Discovery but will obviously not work for homie discovery.
+This option publishes a minimal but non 'homie3/4' compliant homie/ tree . It is simpler essentially by only presenting state values for device attributes that also (if settable) can be updated by appending /set to the end of the topic and publishing an 'allowable' payload.  This is useful if you have no interest in homie and just wish to use HE/MQTT. This likely works for HA Discovery but will obviously not work for homie discovery.  The 'homie' top level is still mandatory as that allows you later to switch over to a full homie3 usage without having to rename all your topic links.  It will not be configurable or ommittable.
 
 # Retain homie states
 
