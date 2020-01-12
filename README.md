@@ -2,6 +2,8 @@ IN PROGRESS
 
 This will very shortly - not yet be updated for alpha 5 
 
+A later graphical version of this read me will contain all appropriate screenshots
+
 
 # MQTT
 
@@ -225,55 +227,87 @@ Once enabled and 'Done' the app will create child devices for those that are ena
 __________________________________________________________________________________________________________________________
 # f) Enable MQTT devices* to be 'mirrored' as virtual devices and controlled within HE. 
 
-Also known as 'manual or 'adhoc' devices this is the most involved option and requires you to create virtual MQTT child devices , using any of HE's 24 inbuilt virtual drivers. Then you configure that device to map to the MQTT topics that represent it's state. This is all done on the second page of the app entitled "Virtual MQTT Data"
+Also known as 'manual or 'adhoc' devices this is the most involved option and requires you to 'manually' create virtual MQTT child devices , using any of HE's 24 inbuilt virtual drivers. Then you configure that device to map to the MQTT topics that represent it's state and control. This is all done on the second page of the app entitled "Virtual MQTT Data"
 
-HE can't (despite request !) create a dropdown for all 'Virtual Devices' so on this page you mustct a device typeat teh top ou mange devices within each category by a second dropdown.
-Now 'Save' the device and you will be presented with another screen, scroll down to the 'Preferences' section.
+HE can't (despite request !) create a device list  dropdown for all 'Virtual Devices' so on this page you mustt a device type at the top and then you separately manage devices within each type category by a second dropdown.
 
-If you selected 'MQTT Switch" there are 4 preferences to configure.  MQTT Dimmer requires 3 more.
+Listed in the drop downs will be all the child devices using virtual drivers in your MQTT app.  This will therefore include child devices that are auto created by discovery.  This allows you to manually edit those devices here if needed.
 
-MQTT Switch devices:		State Topic, Command Topic, StateON, StateOFF  
+Data for the MQTT linking between the virtual device and HE is held in .. well 'Data' within the device. You can view this data from teh HE 'Devices' menu but you can't create or edit if from there. So this third page provides an editor for existing values and also allows you to create new devices. You can't (and shouldn't need to) creaqte new data values.
 
-MQTT Dimmer  devices:		as above plus Level Topic, Level Command Topic, Maximum Brightness Level
+First of all let's look at creating a new device that is going to 'mirror' an existing device on MQTT i.e we'll import an adhoc device from MQTT into HE.  NB. This device on MQTT must not sit within a homie tree - if it does then auto discovery should be used. The device will not be visible as an 'adhoc' device as the homie tree is ignored.
 
-State Topic is the topic on MQTT where the device reports its current onoff state
+Decide what type of new device this be in HE. You can choose from any of the 24 HE Virtual drivers (at the top of the page). Choose one and then click 'Edit this Virtual XYZ device"... make sure NO devices are selected in this dropdown and hit return or click outside of the drop down.   Selecting no device here allows a new device to be created, selecting an existing device edits that existing device.
 
-StateON is what the device posts as its payload when the device is ON (case sensitive) 		e.g. On on ON True true 1 yes etc.
+NB: The pages are dynamically created (they change content based on selection) and this is proving a little slow on HE - please allow a couple of seconds for the pages to redraw when you edit things on this page. I will work on speeding this up but it's outside of my control really.
 
-StateOFF is what the device posts as its payload when the device is OFF (case sensitive)  	e.g. Off off OFF False false 0 no etc.
+In the dialog box below type a unique name e.g. 'myNewDevice' for your new device and hit return - then click 'Create Device'.
+Now, after the page refresh select the device and enable it in the drop down 'MQTT enable Virtual XYZ devices'. For 'adhoc' devices to be useable via MQTT they must be enabled in this drop down. This does not apply to Discovered devices - they are enabled on the third page of the app.  However to edit an adhoc device it MUST be anabled on this page too, otherwise it displays no data values. This is a safeguard as 'discovery' auto completes what it thinks are correct values for data.
 
-Command Topic is the topic you send a command to to make the device change state
+So let's link this new device 'myNewDevice' to MQTT. After enabling the device select in the lower dropdown 'Edit this Virtual XYZ Device' your new device 'myNewDevice' click 'Update'.  This will then populate the bottom of the screen with settings that contains the MQTT topics (and some default state values) for this new device. We will edit those to match the devices actual values on MQTT.
+Please leave "Method to add device attribute topics" set to manual for teh time being.
 
+Depending on the virtual devices 'attributes' a different number of values are displayed.  This allows you to individually map attributes to topics.  If the attribute is 'settable' then both an "[attribute] MQTT status" topic and "[attribute] MQTT status topic" value are shown, if it is not then only  "[attribute] MQTT status topic" will be offered.
 
-Level Topic is the topic on MQTT where the device reports its current level
+ "[attribute] MQTT status topic" contain the MQTT topic address for the state payload for this attribute (HE reads from these)
+ "[attribute] MQTT command topic" values contain the topic address for the cmd payload for this attribute to request a state change (HE writes to these)
 
-Level Command Topic is the topic you send a command to to make the device change level
+e.g  
 
-Maximum Brightness Level is the value of full brightness for this device e.g. 100 255 1.0 a decimal point is significant as it will then
-use real numbers rather than integers.
-	N.B. Hubitat uses 0-100 for level internally so everything will get scaled accordingly
-	
-If your device does not offer some of these options you may leave them blank, however either 'State Topic' or 'Level Topic' is required as it is used to create the Device Network ID.
-	
-Once these parameters are entered click 'Save Preferences' followed by 'Save Device'
+"temperature Status value" is a sensor input and may have a data value of  myDevice/BedroomMain/temperature1  (containing a payload   = 22.6)
+it would not have a Command data value as it can't be controlled
 
-Then you have to restart the MQTT app.
+"switch MQTT status topic"   may have a value of   myDevice/BedroomMain/heater   (containing a payload   = OFF)
+"switch MQTT command topic" may have a value of   myDevice/BedroomMain/heater/control   (and might accept a payload of 'OFF' or 'ON' )
 
-   This next additional step is a bit of annoyance but currently necessary. From the 'MQTT Manual Devices' dropdown select the virtual MQTT device(s) that you have just added. 
-   
-   This dropdown also includes 'discovered' devices, but you want to select just the virtual ones.  If you did prefix them with a special character when creating them e.g. ~  then it will be much more obvious which these devices are.
-   
-   Click through 'Next' 'Done'.
-   (I will look into eliminating this additional step)
-   
-   
-The current values for the state will be updated and control should be available from HE
+'switch' and 'temperature' could both be HE attributes of the one device or be within separate devices.
+
+(optional)
+"Please enter the ON status value for switch"  is the expected MQTT value for the boolean 'ON' condition
+"Please enter the OFF status value for switch"  is the expected MQTT value for the boolean 'OFF' condition
+
+These may differ from HE's expected boolean value which for a contact sensor for example is 'open' 'closed'.  You can leave these blank to pass a value 'as is' or you can map your own values to HE's  eg 'Ein' and 'Aus' to 'on' and 'off' if needed
+
+So here's some typical data for a contact sensor as shown in the 'Devices' menu from HE
+
+contact_Topic: SHAC/state
+contact_OFF: OFF
+mqtt: enabled
+contact_ON: ON
+contact_Cmd:
+
+or a dimmer device
+
+switch_OFF : off
+switch_ON: true
+origin: user
+switch_Topic: sentinel/kitchen/spot-aga/onoff
+level_Cmd: sentinel/kitchen/spot-aga/dim/set
+max_Level: 100
+switch_OFF: off
+mqtt: enabled
+level_Topic:sentinel/kitchen/spot-aga/dim
+switch_Cmd: sentinel/kitchen/spot-aga/onoff/set
+
+N.B. for example the switch_Cmd value is equivalent to the value you entered here
+switch MQTT command topic
+
+Of special note for level based devices is this
+max_Level: 100 
+..  or in the app
+"Please enter the maximum possible level"    100
+
+This allows you to seamlessly map a device on MQTT that has levels of say 0-255 to an HE device all of which use levsl 0-100. This works for both status and command messages.
+
+Now that might seem a lot of information but it really is very easy (and yet very flexible).  Work through it and you'll get the hang very quickly,  typically it's just the one or two topic values you'll need to enter.  More complex virtuals like Virtual Multi  and especially my 'most hated' Virtual Multi are more challenging though as they have lots of attributes.
+
+After configuring click through 'Done' and the new subscriptions will be added for your new device.  The current values for the state(s) will be updated and control should be available from HE
 __________________________________________________________________________________________________________________________
 
 
 # Additional Notes:
 
-After sucessful configuration and Startup you should see something like the following in the log at 'INFO' level
+After sucessful configuration and Startup you should see something like the following in the log at 'INFO' level. Individual device types are also broken down.
 
 	info MQTT: ================ Startup complete ================
 	info MQTT:     Discovered 70 HA light devices
@@ -289,14 +323,15 @@ There are two other app configuration options to be aware of.
 # LogLevel:
 
 LogLevel (within Configuration) can be set to limit the logging entries the app posts. It is recommended to set it at level 'INFO'
-but it can be minimised to "WARN".	Any log messages that show in red as 'ERROR' need investigation (and reporting)
+but it can be minimised to "WARN".	Any log messages that show in red as 'ERROR' need investigation (and reporting). Warn message are normally something just to be aware of.
  
 # Purge Discovered Devices
 
 WARNING: Setting this will delete all MQTT 'discovered devices' when you click 'Done'
 
-Sounds ominous eh, it's really not so drastic.  Switching this ON will clear all the HE devices that were added through 'discovery'. 
-They can be recreated by re-running the app. However the unique internal device ID for the device will then change and so the newly created devices will be just that 'new'.
+Switching this ON will clear all the child HE devices that were added through 'discovery' but not manual 'ad-hoc' configuration.
+
+Discovered devices can be recreated by re-running the app. However the unique internal device ID for the device will then change and so the newly created devices will be just that 'new'.
 This really only has an impact on HE internal references to the original device e.g. Dashboard devices and RuleMachine rules. You will have to recreate these.
 The main use is to clear out all your discovered devices but once running happily you should leave this set to OFF. 
 You can always disable devices on the second page of the app config and individually delete previously created devices manually.
@@ -307,8 +342,8 @@ Enabling this will purge your drop down lists from devices that have been discov
 	
 # Complete and Compliant Homie Topics	
 
-Please leave this set ON for the time being.  If you experience a lot of 'error' messages at startup then please toggle this off and then 'on' again and click 'next' through to restart.  This option will be used once the 'Hubitat/' topic is deprecated to publish a minimal and non complient homie/ tree in it's palce - for simplicity.
+This option publishes a minimal but non 'homie3/4' compliant homie/ tree . It is simpler essentiallyy only presenting state values for device attributes that also (if settable) can be updated by appending /set to the end of the topic and publishing an 'allowable' payload.  This likely works for HA Discovery but will obviously not work for homie discovery.
 
 # Retain homie states
 
-Makes the homie state topics retained on the MQTT broker (normal).  NB homie /set topics should NOT be published retained.
+Makes the homie state topics retained on the MQTT broker (normal - as per spec).  NB homie /set topics should NOT be published retained.
