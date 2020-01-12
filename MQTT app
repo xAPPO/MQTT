@@ -2891,7 +2891,7 @@ def thermostatDevices(evt, name=null, type=null, state=null, id=0, multiple=fals
 				category='measure-temperature'
 				mqtt.publishMsg (sTopic+'/'+category+'/$datatype',"float",1,true,atomicState.suppress)
 				//mqtt.publishMsg (sTopic+'/'+category+'/$unit',UOM,1,true)
-				if (tempUnits=="Fahrenheit °F") UOM="°F" else UOM="°C"
+				if ((tempUnits=="Fahrenheit °F")||(tempUnits=="Fahrenheit x.x°F")) UOM="°F" else UOM="°C"
 				mqtt.publishMsg (sTopic+'/'+category+'/$format','-460:9999',1,true,atomicState.suppress)
 				mqtt.publishMsg (sTopic+'/'+category+'/$unit',UOM,1,true,atomicState.suppress)
 				HAtype="sensor"
@@ -2910,7 +2910,7 @@ def thermostatDevices(evt, name=null, type=null, state=null, id=0, multiple=fals
                 settable="true"
 				mqtt.publishMsg (sTopic+'/'+category+'/$datatype',"float",1,true,atomicState.suppress)
 				//mqtt.publishMsg (sTopic+'/'+category+'/$unit',UOM,1,true)
-				if (tempUnits=="Fahrenheit °F") UOM="°F" else UOM="°C"
+				if ((tempUnits=="Fahrenheit °F")||(tempUnits=="Fahrenheit x.x°F")) UOM="°F" else UOM="°C"
 				mqtt.publishMsg (sTopic+'/'+category+'/$format','0:200',1,true,atomicState.suppress)
                 mqtt.publishMsg (sTopic+'/'+category+'/$settable',"true",1,true,atomicState.suppress)
 				mqtt.publishMsg (sTopic+'/'+category+'/$unit',UOM,1,true,atomicState.suppress)
@@ -2921,7 +2921,7 @@ def thermostatDevices(evt, name=null, type=null, state=null, id=0, multiple=fals
                 settable="true"
 				mqtt.publishMsg (sTopic+'/'+category+'/$datatype',"float",1,true,atomicState.suppress)
 				//mqtt.publishMsg (sTopic+'/'+category+'/$unit',UOM,1,true)
-				if (tempUnits=="Fahrenheit °F") UOM="°F" else UOM="°C"
+				if ((tempUnits=="Fahrenheit °F")||(tempUnits=="Fahrenheit x.x°F")) UOM="°F" else UOM="°C"
 				mqtt.publishMsg (sTopic+'/'+category+'/$format','0:200',1,true,atomicState.suppress)
 				mqtt.publishMsg (sTopic+'/'+category+'/$unit',UOM,1,true,atomicState.suppress)
 				HAtype="sensor"
@@ -2932,7 +2932,7 @@ def thermostatDevices(evt, name=null, type=null, state=null, id=0, multiple=fals
 				mqtt.publishMsg (sTopic+'/'+category+'/$datatype',"enum",1,true,atomicState.suppress)
                 //mqtt.publishMsg (sTopic+'/'+category+'/$mode',state.toString(),1,true)
 				//mqtt.publishMsg (sTopic+'/'+category+'/$unit',UOM,1,true)
-				//if (tempUnits=="Fahrenheit °F") UOM="°F" else UOM="°C"
+				//if ((tempUnits=="Fahrenheit °F")||(tempUnits=="Fahrenheit x.x°F")) UOM="°F" else UOM="°C"
 				//mqtt.publishMsg (sTopic+'/'+category+'/$format','0:200',1,true)
 				//mqtt.publishMsg (sTopic+'/'+category+'/$unit',UOM,1,true)
 				HAtype="sensor"    
@@ -2950,7 +2950,7 @@ def thermostatDevices(evt, name=null, type=null, state=null, id=0, multiple=fals
                 //log ("State for modes is ${sTopic} ** ${category} ** ${state} ${state.toString()}  ", "DEBUG")
                 mqtt.publishMsg (sTopic+'/'+"state"+'/$format',"${state.toString()},idle",1,true,atomicState.suppress)
 				//mqtt.publishMsg (sTopic+'/'+category+'/$unit',UOM,1,true)
-				//if (tempUnits=="Fahrenheit °F") UOM="°F" else UOM="°C"
+				//if ((tempUnits=="Fahrenheit °F")||(tempUnits=="Fahrenheit x.x°F")) UOM="°F" else UOM="°C"
 				//mqtt.publishMsg (sTopic+'/'+category+'/$format',state.toString(),1,true)
 				//mqtt.publishMsg (sTopic+'/'+category+'/$unit',UOM,1,true)
                 state=null
@@ -2963,7 +2963,7 @@ def thermostatDevices(evt, name=null, type=null, state=null, id=0, multiple=fals
 
                 //mqtt.publishMsg (sTopic+'/'+category+'/state',state.toString(),1,true)
 				//mqtt.publishMsg (sTopic+'/'+category+'/$unit',UOM,1,true)
-				//if (tempUnits=="Fahrenheit °F") UOM="°F" else UOM="°C"
+				//if ((tempUnits=="Fahrenheit °F")||(tempUnits=="Fahrenheit x.x°F")) UOM="°F" else UOM="°C"
 				//mqtt.publishMsg (sTopic+'/'+category+'/$format',state.toString(),1,true)
 				//mqtt.publishMsg (sTopic+'/'+category+'/$unit',UOM,1,true)
 				HAtype="sensor"
@@ -2974,7 +2974,7 @@ def thermostatDevices(evt, name=null, type=null, state=null, id=0, multiple=fals
 				mqtt.publishMsg (sTopic+'/'+category+'/$datatype',"enum",1,true,atomicState.suppress)
                 //mqtt.publishMsg (sTopic+'/'+category+'/$mode',state.toString(),1,true)
 				//mqtt.publishMsg (sTopic+'/'+category+'/$unit',UOM,1,true)
-				//if (tempUnits=="Fahrenheit °F") UOM="°F" else UOM="°C"
+				//if ((tempUnits=="Fahrenheit °F")||(tempUnits=="Fahrenheit x.x°F")) UOM="°F" else UOM="°C"
 				//mqtt.publishMsg (sTopic+'/'+category+'/$format','0:200',1,true)
 				//mqtt.publishMsg (sTopic+'/'+category+'/$unit',UOM,1,true)
 				HAtype="sensor"
@@ -2992,7 +2992,7 @@ def thermostatDevices(evt, name=null, type=null, state=null, id=0, multiple=fals
                 //log ("State for modes is ${sTopic} ** ${category} ** ${state} ${state.toString()}  ", "DEBUG")
                 //mqtt.publishMsg (sTopic+'/'+"state"+'/$format',"${state.toString()},idle",1,true)
 				//mqtt.publishMsg (sTopic+'/'+category+'/$unit',UOM,1,true)
-				//if (tempUnits=="Fahrenheit °F") UOM="°F" else UOM="°C"
+				//if ((tempUnits=="Fahrenheit °F")||(tempUnits=="Fahrenheit x.x°F")) UOM="°F" else UOM="°C"
 				//mqtt.publishMsg (sTopic+'/'+category+'/$format',state.toString(),1,true)
 				//mqtt.publishMsg (sTopic+'/'+category+'/$unit',UOM,1,true)
                 state=null
@@ -3379,7 +3379,7 @@ def sensorDevices(evt, name=null, type=null, state=null, id=0, multiple=false) {
 				category='measure-temperature'
 				mqtt.publishMsg (sTopic+'/'+category+'/$datatype',"float",1,true,atomicState.suppress)
 				//mqtt.publishMsg (sTopic+'/'+category+'/$unit',UOM,1,true)
-				if (tempUnits=="Fahrenheit °F") UOM="°F" else UOM="°C"
+				if ((tempUnits=="Fahrenheit °F")||(tempUnits=="Fahrenheit x.x°F")) UOM="°F" else UOM="°C"
 				mqtt.publishMsg (sTopic+'/'+category+'/$format','-460:9999',1,true,atomicState.suppress)
 				mqtt.publishMsg (sTopic+'/'+category+'/$unit',UOM,1,true,atomicState.suppress)
 				HAtype="sensor"
