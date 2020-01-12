@@ -1,6 +1,6 @@
 /*
 
-  Copyright Kevin Hawkins 2019 / 2020     apps@ukusa.co.uk
+  Copyright Kevin Hawkins 2019     apps@ukusa.co.uk
 
   RESTRICTED LICENCE:
   See associated licence file.
@@ -12,7 +12,7 @@
 
   Logging code was adapted from Eric Vitale's ST LIFX application, with thanks.  Copyright 2016 ericvitale@gmail.com
 
-  Many thanks for contributions from Casey, Jeff, Cody, Kirk, Andy and more. Much appreciated.
+  Many thanks for contributions from Casey, Jeff, Cody and more. Much appreciated.
 
   Support via 'invite' Hubitat community alpha5 thread   
 
@@ -108,7 +108,7 @@ preferences {  // can't use atomicState vars in this section
                 //TODO add remaining sensors type (as and if requested)
 			}	
                 
-            section ("<b>IMPORTANT: Enable all you devices for app access</b>",hideWhenEmpty: true, hideable: true, hidden: true) {
+            section ("<b>IMPORTANT: Enable all your devices for app access</b>",hideWhenEmpty: true, hideable: true, hidden: true) {
                 input "allDevices", "capability.*",hideWhenEmpty: true, multiple: true, required: true, title: "<b>Required ></b> Please enable the first option <b>Toggle All on/off </b> - to select all devices", submitOnChange: false                
             }
 
@@ -2063,7 +2063,8 @@ def HADiscoveryAdvertise (name, type="none", category="none", id='0', payON="tru
     String ID = "${id}"
     if (ID != '0') {
         pID= ',"device": {"identifiers": "HE_'+ ID + '","name": "'+name+ '","sw_version":"alpha 5","model":"'+"${atomicState.normHubName}"+'","manufacturer":"Hubitat"}'  // TODO Investigate if this can work
-    }   
+    }
+    else log ("ID is 0 for device $name  $type","WARN")
 		pON = ',"payload_on":"true"'  //default for booleans in homie
 		pOFF = ',"payload_off":"false"'
 		if (type=="switch"|type=="light") {
@@ -2077,7 +2078,7 @@ def HADiscoveryAdvertise (name, type="none", category="none", id='0', payON="tru
 			pIcon = '' // ',"icon":"mdi:power"'
 			pDev = ''
 			pValTemp = ',"value_template":"{{ value }}"'
-			if (type=="switch") payload='{'+pName+pAvail+pAvailPay+pNotAvailPay+pUID+pState+pCmd+pUOM+pON+pOFF+pIcon+pDev+pValTemp+'}'
+			if (type=="switch") payload='{'+pName+pAvail+pAvailPay+pNotAvailPay+pUID+pState+pCmd+pUOM+pON+pOFF+pIcon+pDev+pValTemp+pID+'}'
 			if (type=="light") {
 				pOnType = ',"on_command_type":"first"'
 				pBriState = ',"brightness_state_topic":"' + sDimTopic + '"'
@@ -2125,7 +2126,7 @@ def HADiscoveryAdvertise (name, type="none", category="none", id='0', payON="tru
 				else if (category == "smoke-alarm") pDevClass = ',"device_class": "smoke"'
 				else if (category == "carbonMonoxide-alarm") pDevClass = ',"device_class": "gas"'
                 else if (category == "presence-sensor") pDevClass = ',"device_class": "presence"'
-				else if (category == "water") pDevClass = ',"device_class": "water"'
+				else if (category == "water") pDevClass = ',"device_class": "moisture"'
                 else if (category == "door") pDevClass = ',"device_class": "door"'
                     
                     /*
@@ -2201,7 +2202,7 @@ window: On means open, Off means closed
 			pIcon = '' // ',"icon":"mdi:lock"'
 			pDev = ''
 			pValTemp = ',"value_template":"{{ value }}"'
-			payload='{'+pName+pAvail+pAvailPay+pNotAvailPay+pUID+pState+pCmd+pUOM+pLOCK+pUNLOCK+pIcon+pDev+pValTemp+'}'
+			payload='{'+pName+pAvail+pAvailPay+pNotAvailPay+pUID+pState+pCmd+pUOM+pLOCK+pUNLOCK+pIcon+pDev+pValTemp+pID+'}'
         }
     else if (type=="cover") {
         sCoverTopic="homie/${atomicState.normHubName}/${normName}"+'/contact'
@@ -2215,7 +2216,7 @@ window: On means open, Off means closed
         pIcon = '' // ',"icon":"mdi:garage"'
         pDev = ''
         pValTemp = ',"value_template":"{{ value }}"'
-        payload='{'+pName+pAvail+pAvailPay+pNotAvailPay+pUID+pState+pCmd+pUOM+pOPEN+pSTOP+pCLOSE+pIcon+pDev+pValTemp+'}'
+        payload='{'+pName+pAvail+pAvailPay+pNotAvailPay+pUID+pState+pCmd+pUOM+pOPEN+pSTOP+pCLOSE+pIcon+pDev+pValTemp+pID+'}'
     }   
     	else if (type=="alarm_control_panel") {
             sAlarmTopic="homie/${atomicState.normHubName}/${normalize(name)}/securitymode"  // the suffix is not used here
@@ -2453,7 +2454,7 @@ def start_HADiscovery(evt){
     
 
 def subscribeHADevices(evt=null) {  // ToDo - these might benefit from pacing
-	log ("Adding HA switches, lights and sensors friendly names topics ", "ERROR")
+	log ("Adding HA switches, lights and sensors friendly names topics ", "INFO")
 	mqtt.subscribeTopic(atomicState.HA+'/switch/+/friendly_name')
 	mqtt.subscribeTopic(atomicState.HA+'/light/+/friendly_name')
 	//mqtt.subscribeTopic(atomicState.HA+'/sensor/+/friendly_name') // // this creates device
@@ -6769,7 +6770,7 @@ window: On means open, Off means closed
                         }
 					}
 					else {
-                        log ("HA type $type  - not recognised yet so creating defaults","WARN")
+                        log ("HA type $type  - not recognised yet so creating defaults","INFO")
 
                         child.capabilities.each { cap ->
                           cap.attributes.each { attr ->
