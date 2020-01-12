@@ -1,7 +1,7 @@
 // Not licensed for onward /re-distribution for any reason and in any form  - see license
 
 metadata {
-	// v0.5
+	// v0.5 
     definition (name: "MQTT Client", namespace: "ukusa", author: "Kevin Hawkins",importUrl: "https://raw.githubusercontent.com/Gledholt/TTQM5/master/MQTT%20client") {
         capability "Initialize"
 		capability "Presence Sensor"
