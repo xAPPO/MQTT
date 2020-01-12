@@ -1,7 +1,7 @@
 // Not licensed for onward /re-distribution for any reason and in any form  - see license
 
 metadata {
-	// v0.5 
+	// v0.5
     definition (name: "MQTT Client", namespace: "ukusa", author: "Kevin Hawkins",importUrl: "https://raw.githubusercontent.com/Gledholt/TTQM5/master/MQTT%20client") {
         capability "Initialize"
 		capability "Presence Sensor"
@@ -782,7 +782,7 @@ def parse(String description) {
                 }
 
                 else {
-                     log ("Received pacing 'name' but expected $state.waiting", "ERROR")
+                     log ("Received pacing 'name' but expected $state.waiting", "LOG")
                     //unsubscribeTopic ('homie/development/$fw/name')
                 
                    // def evt99 = createEvent (name: "startHADiscovery", value: "true", data: [seq: sequence], isStateChange: true)
@@ -807,7 +807,7 @@ def parse(String description) {
                     unsubscribeTopic ('homie/'+state.normHubName+'/$fw/client')
                 }
                 else {
-                    log ("Received pacing 'client' but expected $state.waiting", "ERROR")
+                    log ("Received pacing 'client' but expected $state.waiting", "LOG")
 
                     log ("======= Regardless still unsubscribing from HA friendly_names ========","INFO")
                     
@@ -829,7 +829,7 @@ def parse(String description) {
                     unsubscribeTopic ('homie/'+state.normHubName+'/$fw/version')
                 }
                 else {
-                    log ("Received pacing 'version' but expected $state.waiting", "ERROR")
+                    log ("Received pacing 'version' but expected $state.waiting", "LOG")
                     log ("========  Regardless HA Discovery has completed   =============","INFO")
                     log ("======== Regardless asking Startup Summary to run ============","INFO")
                     sendEvent(name: "HADiscoverStart", value: 'complete',isStateChange: true) 
@@ -1158,4 +1158,3 @@ private determineLogLevel(data) {
             return 1
     }
 }
-
