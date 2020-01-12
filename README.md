@@ -4,10 +4,13 @@ This has been 'mostly' updated now for alpha 5 - please let me know any issues o
 
 The later / release version of this read me will contain appropriate screenshots rather than just being text based
 
+Pre Release notes for alpha5 
+11th January 2020
+
 
 # MQTT
 
-MQTT client for Hubitat
+MQTT full featured client for Hubitat Elevation Hubs (HE)
 
 The licence for alpha5 has been updated to be restrictive whilst in testing.  I intend the final version to be under a much less restrictive licence although it will likely require my express written permission to publish any derivate code and no commercial offering will be allowed.
 
@@ -17,8 +20,6 @@ You may not redistribute this code in any form to any other person. It is provid
 
 You may NOT fork this repository to a publicly viewable one (please) as it makes the source code available outside of this group.
 
-Pre Release notes for alpha5 
-11th January 2020
 
 This read me is now mostly updated for alpha 5 but still a 'work in progress'.  Before installing please backup first though and as always - use entirely at your own risk and discretion, there is no warranty or accepted liability as to this app being suitable for any purpose whatsoever and no liability for any issues or damage caused by this app in whatsover form may be claimed against the author.
 
@@ -26,7 +27,7 @@ ________________________________________________________________________________
 
 # Installation Notes
 
-You must install both the MQTT app and the MQTT client driver.  The previous (alpha4) two drivers for 'MQTT switch' and 'MQTT dimmer' are no longer required and are deprecated / will no longer function.   Instead you can now use any of the 24 Hubitat virtual drivers.  The MQTT text driver is still available (optional) but is likely not required nor has not been tested with alpha 5.
+You must install both the MQTT app and the MQTT client driver.  The previous (alpha4) two drivers for 'MQTT switch' and 'MQTT dimmer' are no longer required and are deprecated / will no longer function.   Instead you can now use any of the 24 Hubitat virtual drivers.  The MQTT text driver is still available (optional) but is likely not required nor has it been tested with alpha 5.
 
 You may lose/have to recreate any virtual devices that you have that import devices from MQTT into HE.  If this is a concern contact me first as there is a way around it.   You might wish to retain previous devices using my now deprecated drivers for the purpose of copying the MQTT details over to the newer HE Virtual drivers.  Warning: Purging MQTT devices will delete these older devices pemanently.
 
