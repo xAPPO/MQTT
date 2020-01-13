@@ -425,7 +425,7 @@ def vMQTT() {
                     input(name: "stateOFF", type: "text", defaultValue: defOFF, title: "Please enter the OFF status value for ${atomicState.attList[i]}" , required: false, submitOnChange: true)
                     if (!newDev)  {
                        // log.debug "2a Updating old ${atomicState.attList[i]}_OFF with ${settings?.stateOFF} on $vDev.name"
-                        vDev.updateDataValue("${atomicState.attList[i]}_OFF ", "${settings?.stateOFF}")// $settings?.stateOFF)
+                        vDev.updateDataValue("${atomicState.attList[i]}_OFF", "${settings?.stateOFF}")// $settings?.stateOFF)
                     }
                     }
         /*
@@ -1074,11 +1074,10 @@ def initialize() {
 }
 
 def mqttChange(evt) {  // Currently all types of devices (SWITCH DIMMER CONTACT) come in here
-
     if (evt.name=='switch') {
         topic = evt.device.getDataValue("switch_Cmd")
         if (evt.value == "${evt.device.getDataValue("mqtt_Switch")}") log ("Blocking ${evt.value} command to MQTT ${evt.name} as already ${evt.value}","INFO")
-         else mqtt.publishMsg (topic,evt.value,1,false) 
+        else mqtt.publishMsg (topic,evt.value,1,false) // this takes no account of the switch_ON and switch_OFF settings - it assumes the /set was correct
     }
     else if (evt.name=='level') {       
         topic = evt.device.getDataValue("level_Cmd")
@@ -1338,7 +1337,7 @@ def deviceSubscribes(count) {
         count = registerAll (colourT,count,'colourDevices')
         //count = registerSpecific (colourT,count,'ColorTemperature','colourDevices')
         count = registerAll (thermostats,count,'thermostatDevices')
-        count = registerAll (buttonsPush,count,'buttons')
+        count = registerAll (buttonspush,count,'buttons')
         count = registerAll (alarms,count,'otherDevices')
         count = registerAll (bulbs,count,'otherDevices')
         count = registerAll (chimes,count,'otherDevices')
@@ -1502,7 +1501,7 @@ def lookupHandler(device,capability,attribute,handlerReq='none')
    case "PushableButton":
    case "DoubleTapableButton":
    case "ReleasableButton":
-       handler="buttons" 
+       handler="buttons"
        break
    case "Alarm":
    case "Bulb":
@@ -2575,7 +2574,15 @@ def switched(evt, name=null, type=null, state=null,id=0) {
                 if (cMQTT=="enabled") {
                     cTopic=device.getDataValue("switch_Cmd") 
                     if(cTopic!=null) {
-                        log ("Sending command to MQTT $cTopic","INFO")
+                        if (state=='off') { 
+                            sOFF=device.getDataValue("switch_OFF")
+                            if (sOFF != null) state=sOFF  
+                        }
+                        if (state=='on') {
+                            sON=device.getDataValue("switch_ON")
+                            if (sON != null)  state = sON  
+                        } 
+                        log ("Sending $state command to MQTT $cTopic","INFO")
                         mqtt.publishMsg (cTopic,state,1,true)
                     }
                 }
@@ -2620,7 +2627,22 @@ if (settings?.HEBasic)
 		else if (settings?.HADiscovery) log ("HADiscovery switched discarded for ${name}","DEBUG")
 }
 
-    
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 def switchedDim(evt, name=null, type=null, state=null,id=0) {  // why do we pass devType in here ??
 	if (evt!=null)
@@ -2639,7 +2661,15 @@ def switchedDim(evt, name=null, type=null, state=null,id=0) {  // why do we pass
                 if (cMQTT=="enabled") {
                     cTopic=device.getDataValue("switch_Cmd") 
                     if(cTopic!=null) {
-                        log ("Sending command to MQTT $cTopic","INFO")
+                        if (state=='off') { 
+                            sOFF=device.getDataValue("switch_OFF")
+                            if (sOFF != null) state=sOFF  
+                        }
+                        if (state=='on') {
+                            sON=device.getDataValue("switch_ON")
+                            if (sON != null)  state = sON  
+                        } 
+                        log ("Sending $state command to MQTT $cTopic","INFO")
                         mqtt.publishMsg (cTopic,state,1,true)
                     }
                 }
@@ -2800,6 +2830,7 @@ if (settings?.HEBasic)
 
 
 def buttons(evt, name=null, type=null, state=null, id=0) {
+    
 	if (evt!=null)
 	{
 		name=evt.displayName
@@ -2823,22 +2854,36 @@ def buttons(evt, name=null, type=null, state=null, id=0) {
         sTopic="homie/${atomicState.normHubName}/${normName}"
         addProperty(sTopic,'button')
             // mqtt.publishMsg (sTopic+'/button/'+"${xName}","${state}",1,true)
-        
-            mqtt.publishMsg (sTopic+'/button/'+"${normalize(type)}","${state}",1,true)
-			if (state=="4") nState = "true" else nState = "false"    //TODO make flexible
-
+        if (type==null) type=evt.name
+        mqtt.publishMsg (sTopic+'/button/'+"${normalize(type)}","${state}",1,true)
+        if (type!=null){
+                int bS=-1
+                if (type=='released') bS=0
+                else if (type=='pushed') bS = 1
+                else if (type=='doubleTapped') bS = 2
+                else if (type=='held') bS = 3
+                    if (bS>=0) {
+                        mqtt.publishMsg (sTopic+"/button/button-$state","$bS",1,true)
+                        pauseExecution(1000) //do a runIn instead
+                        mqtt.publishMsg (sTopic+"/button/button-$state","0",1,true)
+                    }
+       
+        }
+        else log ("button type was $type","ERROR")
+            
 			//================  Limited homie spec implemenation ================
 			//mqtt.publishMsg (sTopic+'/$properties',"lock",1,true)  // limited homie implementation
 			mqtt.publishMsg (sTopic+'/$name',name,1,true)
 			mqtt.publishMsg (sTopic+'/$type',"button",1,true,atomicState.suppress)
-        
+            index=state.toString()
+            
 			mqtt.publishMsg (sTopic+'/button/$settable',"false",1,true,atomicState.suppress)
 			mqtt.publishMsg (sTopic+'/button/$name',name,1,true,atomicState.suppress)
 			mqtt.publishMsg (sTopic+'/button/$datatype',"integer",1,true,atomicState.suppress)
             mqtt.publishMsg (sTopic+'/button/$format',"0:100",1,true,atomicState.suppress)
 			mqtt.publishMsg (sTopic+'/button/$retained',(settings?.homieStatesPersist).toString(),1,true,atomicState.suppress)
 			sTopic="homie/${atomicState.normHubName}/${normName}"+'/button'
-        mqtt.publishMsg (sTopic,"${state}",1,settings?.homieStatesPersist)
+            mqtt.publishMsg (sTopic,"${state}",1,settings?.homieStatesPersist)
 		    //log ("Updated ${sTopic} to ${nState}", "ERROR")   // only for log visibility
 			//===================================================================
 	}
@@ -6097,24 +6142,17 @@ def cmdEventNEW (evt) {  // 'set' command from homie for a Hubitat or manual dev
             if (found) {
                     if (data.state[0]=='#') {
                         RGB=hubitat.helper.ColorUtils.hexToRGB(data.state)
-//log.error "Got an #RGB value ${data.state} >>  ${RGB}"
                         HSV=hubitat.helper.ColorUtils.rgbToHSV(RGB)                   
-//log.error "HSV is ${HSV}    ${HSV[0]} ${HSV[1]} ${HSV[2]}"
-
                         def HSL = [:]
                         HSL.put('hue',HSV[0].toInteger())
                         HSL.put('saturation',HSV[1].toInteger())
                         HSL.put('level',HSV[2].toInteger())
-                                               
-//log.error "HSV is ${HSV}      ${HSV.hue} ${HSV.saturation} ${HSV.value}"
-                         device.setColor(HSL)
+                        device.setColor(HSL)
                         //device.setColor([HSV])
-//log.error "SetColor RGBWT" + HSV + "   " + HSL
                        // device.setSaturation(HSV.saturation.toInteger())
 					   // device.setHue(HSV.hue.toInteger())
 					   // device.setLevel(HSV.value.toInteger())
                         RGB=hubitat.helper.ColorUtils.hsvToRGB(HSV)
-//log.error "Returned RGB is ${RGB}"
                         return
                     }
 					float Rtemp= Float.parseFloat(data.state)/3.6 //TODO checkRGB
