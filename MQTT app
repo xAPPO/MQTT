@@ -4316,15 +4316,15 @@ def LookupManual(evt) {
 	def onoffDevice=false
 	def textDevice=false
     def contactDevice=false
+    def varDevice=false
 	def data = parseJson(evt.data)
 	deviceID=data.topic
-
     LookupID=atomicState.topicLink[deviceID]
     if (LookupID != null) {
 			        
                 device=getChildDevice(LookupID) 
                 devType=device.getTypeName()
-                log ("Virtual device $device [$devType] found in topicLink","DEBUG") //+ data.topic + " == "  + LookupID), "DEBUG") 
+                log ("Virtual device $device [$devType] found in topicLink","DEBUG") 
                 found=true 
                 atomicState.lastDev="$device [$evt.value]"
                 if (devType.contains("Sensor")){
@@ -4335,10 +4335,12 @@ def LookupManual(evt) {
                 else {
                     if (device.hasCommand ("on")) onoffDevice=true
                     if (device.hasCommand ("setLevel")) dimDevice=true 
+                    if (vDev.getTypeName()=="RM Connector Variable") varDevice=true 
                 }    
         }
+    else log ("Lookup failed for $device [$devType] in topicLink","KH")
 
-    
+  
     
 // LOOKUP for a device using my virtual drivers 
     if (!found) {
@@ -4653,6 +4655,10 @@ if (devType=="manual" && !onoffdevice && !dimdevice) {    // we are going to hav
       
         if (textDevice) {
             device.updateText (evt.value)
+        }
+        
+        if (varDevice) {
+            device.setVariable(evt.value)
         }
         
         
@@ -5240,7 +5246,7 @@ def sensorUOM(evt) {
 def cmdEvent (evt) {  // 'set' command from homie for a Hubitat or manual device via Hubitat basic 
 	// TODO This has value and data transposed in the two versions for discovered and adhoc .. tidy up
 	def data = parseJson(evt.data)
-	log ("MQTT set command received for " + evt.value + " " + data.cmd + " " + data.state,"INFO")
+	log ("MQTT Set command received for " + evt.value + " " + data.cmd + " " + data.state,"INFO")
 	normName=evt.value
     matchName=evt.value
     found=false
