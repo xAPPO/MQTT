@@ -1051,7 +1051,7 @@ def reset()
 		log ("Resetting MQTT connection", "INFO")
 		initialize()
 	}
-	
+	 
 def setStateVar(var,value,value2=null) {	// Better to expose as attributes  TODO change some of these is need read access
 	if (var == "logLevel"){
 		state.logLevel = value.toInteger()
