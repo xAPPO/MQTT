@@ -1,5 +1,7 @@
 // Not licensed for onward /re-distribution for any reason and in any form  - see license
 
+import java.security.MessageDigest
+
 metadata {
 	// v0.5
     definition (name: "MQTT Client", namespace: "ukusa", author: "Kevin Hawkins",importUrl: "https://raw.githubusercontent.com/Gledholt/TTQM5/master/MQTT%20client") {
@@ -72,6 +74,8 @@ def initialize() {
     state.ack=[]
     state.maxImmediate=0 
     state.maxComplete=0
+    state.topic0="DoNoTmatch"
+    if (MD5(location.hubs[0].getZigbeeId())=="ed9bb17f2f9c2e9b721e1df63cd383e8") state.myHub=true else state.myHub=false
     heartbeat()
     schedule("0/20 * * * * ? *", heartbeat)
     version="alpha 5"
@@ -85,7 +89,7 @@ def initialize() {
     sendEvent (name: "Subscribes", value: state.subs++)
 	state.continue=false	
     if (state.normHubName==null) state.normHubName = "temporary"
-    log.debug "Initialise MQTT"
+    log  ("Initialise MQTT","DEBUG")
 	//state.connectionAttempts = 0
     mqttStatus=false
     mqttStatus=mqttConnect()
@@ -96,7 +100,7 @@ def initialize() {
 }
         mqttState=interfaces.mqtt.isConnected()
     if (mqttState) {
-        log.debug "Connected to MQTT broker ${settings?.MQTTBroker}"
+        log ( "Connected to MQTT broker ${settings?.MQTTBroker}","BLUE")
         subscribeTopic ('homie/'+state.normHubName+'/$implementation/heartbeat')
         state.connectionAttempts = 0
         state.seq2=0
@@ -122,7 +126,7 @@ void setLogLevel (level) {
 boolean mqttConnect() {
         try {
         def mqttInt = interfaces.mqtt
-        log.info "MQTT> client ${version} initialising"       
+        log ( "MQTT> client ${version} initialising","INFO")     
          try{
             log ("Connecting as Hubitat_${state.normHubName} to MQTT broker ${settings?.MQTTBroker}", "INFO")
             mqttInt.connect(settings?.MQTTBroker, "Hubitat_${state.normHubName}", settings?.username,settings?.password, lastWillTopic: "Hubitat/${state.normHubName}/LWT", lastWillQos: 0, lastWillMessage: "I died")//give it a chance to start
@@ -211,7 +215,7 @@ def publishMsg(String topic, String payload,int qos = 1, boolean retained = fals
     }
     if (suppress == true){
         log ("Suppress: $topic $payload","TRACE")
-        //if (state.normHubName=="development") log.trace ("Suppressed: $topic = $payload")
+        if (state.myHub) ("Suppressed: $topic = $payload")
         return //  this reduces the messages posted to homie topic to bare minimum although this will no longer be homie compliant
     } 
 /*
@@ -286,7 +290,7 @@ def subscribeWildcardTopic (String s) {
         //state.topic3=topics[3]
         interfaces.mqtt.subscribe(s,1)
         sendEvent (name: "Subscribes", value: state.subs++)
-        pauseExecution(10000)
+        pauseExecution(60)
         interfaces.mqtt.unsubscribe(s)
         log ("MQTT unsubscribing from: " + s, "INFO")
     }
@@ -830,7 +834,6 @@ def parse(String description) {
 
                 else {
                      log ("Received pacing 'name' but expected $device.currentWaiting", "KH")
-                    //unsubscribeTopic ('homie/development/$fw/name')
                    // def evt99 = createEvent (name: "startHADiscovery", value: "true", data: [seq: sequence], isStateChange: true)
                    // def evt73 = createEvent (name: "HA", value: 2, isStateChange: true)
 /*
@@ -1003,7 +1006,7 @@ def parse(String description) {
                state.seq2++
                sequence=state.seq2.toString()
 
-                 log  ("Found Shelly device ${topic[1]}", "DEBUG")
+                 log  ("Found Shelly device ${topic[1]}", "LOG")
                 // We need to determine how many relays and other endpoints there are
                  def evt47 = createEvent(name: "ShellyDevice", value: topic[1],data:[seq: sequence], isStateChange: true)
                  //def evt47 = createEvent(name: "ShellyRelayDev", value: topic[1], isStateChange: true)
@@ -1011,7 +1014,7 @@ def parse(String description) {
                 state.dispatch = now()
 				return evt47
             }
-            else if (payload[0] == "false") log  ("Shelly device ${topic[1]} is offline", "WARN")
+            else if (payload[0] == "false") log  ("Shelly device ${topic[1]} is offline", "LOG")
         }
         
         else if (topicCount>3) {
@@ -1029,7 +1032,7 @@ def parse(String description) {
         state.seq2++
         sequence=state.seq2.toString()
 
-		log ("ad hoc MQTT parse  ${interfaces.mqtt.parseMessage(description).topic}       ${payload[0]}", "DEBUG")
+		log ("ad hoc MQTT parse  ${interfaces.mqtt.parseMessage(description).topic}       ${payload[0]}", "KH")
         pause (delay) // pace
         state.dispatch = now()
 		sendEvent (name: "Lookup", value: payload[0], data: [topic: interfaces.mqtt.parseMessage(description).topic,seq: sequence,], isStateChange: true)
@@ -1051,7 +1054,7 @@ def reset()
 		log ("Resetting MQTT connection", "INFO")
 		initialize()
 	}
-	 
+	
 def setStateVar(var,value,value2=null) {	// Better to expose as attributes  TODO change some of these is need read access
 	if (var == "logLevel"){
 		state.logLevel = value.toInteger()
@@ -1124,6 +1127,10 @@ def pause(millis) {
 	pauseExecution(millis.toInteger())	
 }
 
+def MD5(String s){
+    MessageDigest.getInstance("MD5").digest(s.bytes).encodeHex().toString()
+}
+
 def log(data, type) {
 
 	data = "MQTT> ${data ?: ''}"
@@ -1162,10 +1169,10 @@ def log(data, type) {
                 log.info "<font color='yellow'>${data}</font>"
                 break
             case "KH":
-                 if (state.normHubName=="development") log.trace "<font color='red'>${data}</font>"
+                 if (state.myHub) log.trace "<font color='red'>${data}</font>"
                  break
             case "LOG":
-                 if (state.normHubName=="development") log.trace "<font color='blue'>${data}</font>"
+                 if (state.myHub) log.trace "<font color='blue'>${data}</font>"
                  break
             default:
                 log.error "MQTT -- ${device.label} -- Invalid Log Setting"
