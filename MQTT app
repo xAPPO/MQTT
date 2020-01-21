@@ -4419,7 +4419,7 @@ def LookupManual(evt) {
                 else {
                     if (device.hasCommand ("on")) onoffDevice=true
                     if (device.hasCommand ("setLevel")) dimDevice=true 
-                    if (vDev.getTypeName()=="RM Connector Variable") varDevice=true 
+                    if (device.getTypeName()=="RM Connector Variable") varDevice=true 
                 }    
         }
     else log ("Lookup failed for $device [$devType] in topicLink","KH")
