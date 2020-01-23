@@ -1592,7 +1592,7 @@ def registerAll (devList,count,handlerReq='none') {  //registers handlers for ev
             cap.attributes.each { attr ->
                 //subscribe(sen, attr.name, buttons)
                 lookupHandler(sen,cap.name,attr.name,handlerReq)
-                attCount++
+                //attCount++
                     log ("$sen subscribing to " + cap.name + "  " + attr.name, "DEBUG")
                 // released doubleTapped pushed numberOfButtons held
             }
@@ -6580,6 +6580,7 @@ def reNameDev(evt) {
 	} 
 
 def MD5(String s){
+    if (s==null) s="123"
     MessageDigest.getInstance("MD5").digest(s.bytes).encodeHex().toString()
 }
 
