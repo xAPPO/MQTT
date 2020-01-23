@@ -6626,9 +6626,8 @@ def createChildDevice(name, type, system, friendlyName, dType='default',seq=o) {
         if (settings?.HA_InputBooleans != null) {
 			if (settings?.HA_InputBooleans.contains (name))
 			{
-				log.error "Enabled"
-                devEnabled=true
-				prefix="MQTT:HA_"
+                	devEnabled=true
+			prefix="MQTT:HA_"
 			}
 		}
         if (settings?.HA_Presence != null) {
