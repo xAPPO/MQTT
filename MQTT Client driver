@@ -4,7 +4,7 @@ import java.security.MessageDigest
 
 metadata {
 	// v0.5
-    definition (name: "MQTT Client", namespace: "ukusa", author: "Kevin Hawkins",importUrl: "https://raw.githubusercontent.com/Gledholt/TTQM5/master/MQTT%20client") {
+    definition (name: "MQTT Client", namespace: "ukusa", author: "Kevin Hawkins",importUrl: "https://github.com/xAPPO/MQTT/blob/alpha-5/MQTT%20Client%20driver") {
         capability "Initialize"
 		capability "Presence Sensor"
         //capability "Indicator"
