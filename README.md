@@ -9,7 +9,7 @@ Later / release version of this read me will contain appropriate screenshots rat
 Pre Release notes for beta 1 
 25th January 2020
 
-############################################################################################
+###########################################################################################
 
                        This application is provided free of charge .. enjoy. 
 
@@ -17,7 +17,7 @@ Pre Release notes for beta 1
 
                        https://www.buymeacoffee.com/xAPPO
 
-#############################################################################################
+###########################################################################################
 
 
 # MQTT
