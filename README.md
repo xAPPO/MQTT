@@ -1,5 +1,7 @@
 IN PROGRESS
 
+See also the MQTT.pdf file in the repository which has more content.
+
 This has been 'mostly' updated now for the beta release - please let me know any issues or suggestions
 
 Later / release version of this read me will contain appropriate screenshots rather than just being text based
@@ -28,7 +30,9 @@ You must install two components - the MQTT app and the MQTT client driver.  The 
 
 If you have a pre alpha 5 version you may lose/have to recreate any virtual devices that you have that import devices from MQTT into HE.  If this is a concern contact me first as there is a way around it.   You might wish to retain previous devices using my now deprecated drivers for the purpose of copying the MQTT details over to the newer HE Virtual drivers.  Warning: Purging MQTT devices will delete these older devices pemanently.
 
-This read me will be updated as documentation evolves but will be replaced by a richer format supporting screenshots.  There are three discussion groups for this beta.  A general topic and then one for HomeAssistant issues and one for OpenHAB issues.  If you find bugs then this GitHub repository is the place to post them under 'issues'.  I notice them quicker and can create a discussion on them individually. 
+This read me will be updated as documentation evolves but will be replaced by a richer format supporting screenshots. This richer document MQTT.pdf is already available in the repository.
+
+There are three discussion groups for this beta.  A general topic and then one for HomeAssistant issues and one for OpenHAB issues.  If you find bugs then this GitHub repository is the place to post them under 'issues'.  I notice them quicker and can create a discussion on them individually. 
 
 # Features
 
