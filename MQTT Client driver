@@ -3,8 +3,8 @@
 import java.security.MessageDigest
 
 metadata {
-	// v0.5
-    definition (name: "MQTT Client", namespace: "ukusa", author: "Kevin Hawkins",importUrl: "https://github.com/xAPPO/MQTT/blob/alpha-5/MQTT%20Client%20driver") {
+	// v b1
+    definition (name: "MQTT Client", namespace: "ukusa", author: "Kevin Hawkins",importUrl: "https://raw.githubusercontent.com/xAPPO/MQTT/beta/MQTT%20Client%20driver") {
         capability "Initialize"
 		capability "Presence Sensor"
         //capability "Indicator"
@@ -78,7 +78,7 @@ def initialize() {
     if (MD5(location.hubs[0].getZigbeeId())=="ed9bb17f2f9c2e9b721e1df63cd383e8") state.myHub=true else state.myHub=false
     heartbeat()
     schedule("0/20 * * * * ? *", heartbeat)
-    version="alpha 5"
+    version="beta 1"
     if (state.delay==null) state.delay=250 // inter state.maxImmediate event pacing in mS
 
 //    sendEvent (name: "Status", value: "disconnected" , isStateChange: true)
@@ -270,7 +270,7 @@ def getStateWaiting () {
     
 def unsubscribeTopic (String s) {
     mqttState=interfaces.mqtt.isConnected()
-	log ("MQTT unsubscribing from: " + s, "DEBUG")
+	log ("MQTT unsubscribing from: " + s, "INFO")
     if (mqttState){
         interfaces.mqtt.unsubscribe(s)
          sendEvent (name: "Subscribes", value: --state.subs)   
@@ -386,13 +386,11 @@ def parse(String description) {
                 if (payload[1]==device.currentWaiting) log ("Waiting for $device.currentWaiting .. - but it appears there is no queue:-) ","RED")
                 //Try sending trigger again.... 
                 //if (device.currentWaiting=='name')
-   version="alpha 5"
-                publishMsg("homie/${state.normHubName}/" +'$fw/name','alpha',1,true)
-                //if (device.currentWaiting=='client') 
-                publishMsg("homie/${state.normHubName}/" + '$fw/client',"${version}",1,true)
-                //if (device.currentWaiting=='version') 
-                publishMsg("homie/${state.normHubName}/" +'$fw/version','5',1,true)
-                //If that fails I could just force forward
+   version="beta 1"
+                if (device.currentWaiting=="name") publishMsg("homie/${state.normHubName}/" +'$fw/name','beta',1,true)
+                else if (device.currentWaiting=="client") publishMsg("homie/${state.normHubName}/" + '$fw/client',"${version}",1,true) 
+                else if (device.currentWaiting=="version") publishMsg("homie/${state.normHubName}/" +'$fw/version','1',1,true)
+                //If this fails I could just force forward
             }   
         }
    }
@@ -421,8 +419,7 @@ def parse(String description) {
     }
    
     if (topic[0]==state.HAStatestreamTopic) {  //HA
- 
-			if (topic[1]=='status') {  // HA LWT
+        if (topic[1]=='status') {  // HA LWT
                 ack=false
 				if (payload[0]=="online") {
 					log ("Home Assistant [${state.HAStatestreamTopic}] is ONLINE","INFO")
@@ -777,7 +774,7 @@ def parse(String description) {
 			}// not Hubitat local control
 */
 
-	
+// ##################################################   homie ###############################################	
 	
 	
 	else if (topic[0]=="homie" && topic[1]== "${state.normHubName}"){ //local - look for incoming homie 'set' commands that control Hubitat devices here
@@ -849,9 +846,8 @@ def parse(String description) {
                
             else if (topic[3]=='client') {
                 if (device.currentWaiting=="client") {
-                    log  ("============ Asking HA Discovery to start  ============","INFO")
-                    setStateWaiting ("none")
-                    sendEvent (name: "Waiting", value: "none")
+                    setStateWaiting ("version")
+                    sendEvent (name: "Waiting", value: "version")
                     log ("============ Unsubscribing from HA friendly_names ============","INFO")
                     sendEvent(name: "unsubscribeFriendly", value: "true",isStateChange: true)
                     unsubscribeTopic ('homie/'+state.normHubName+'/$fw/client')
@@ -882,7 +878,7 @@ def parse(String description) {
                     log ("========  Regardless HA Discovery has completed   =============","INFO")
                     log ("======== Regardless asking Startup Summary to run ============","INFO")
                     sendEvent(name: "HADiscoverStart", value: 'complete',isStateChange: true)
-                    setStateWaiting ("completed")
+                    setStateWaiting ("complete")
                 }
 
             } //version
@@ -1048,6 +1044,7 @@ def reset()
 	{
         try {
         	interfaces.mqtt.disconnect()
+            log ("Disconnected MQTT", "INFO")
         } catch(e) {
         log ("Disconnecting : ${e.message}", "WARN")
         }
@@ -1128,6 +1125,7 @@ def pause(millis) {
 }
 
 def MD5(String s){
+    if (s==null) s='123'
     MessageDigest.getInstance("MD5").digest(s.bytes).encodeHex().toString()
 }
 
