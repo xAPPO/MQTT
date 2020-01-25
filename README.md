@@ -1,6 +1,6 @@
 IN PROGRESS
 
-See also the MQTT.pdf file in the repository which has more content.
+See also the MQTT beta instructions.pdf file in the repository which has more content.
 
 This has been 'mostly' updated now for the beta release - please let me know any issues or suggestions
 
