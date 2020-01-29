@@ -2255,9 +2255,10 @@ def subscribeHADevices(evt=null) {  // ToDo - these might benefit from pacing
 }
 
 def unsubscribeHADevices(evt=null) {
+    subscribeHADeviceEvents()
     // Can't wildcard these as the subs were setup individually
 	log ("Unsubscribing from HA switches, lights and sensors friendly names topics ", "INFO")
-    mqtt.subscribeTopic ('homie/'+atomicState.normHubName+'/$fw/version')  //using this to as it returns after all other messages have arrived so know done    
+    mqtt.subscribeTopic ('homie/'+atomicState.normHubName+'/$fw/version')  //using this for pacing as it returns after all other messages have arrived so know done    
 	mqtt.unsubscribeTopic(atomicState.HA+'/switch/+/friendly_name')
 	mqtt.unsubscribeTopic(atomicState.HA+'/light/+/friendly_name')
 	mqtt.unsubscribeTopic(atomicState.HA+'/sensor/+/friendly_name') 
@@ -2300,7 +2301,7 @@ def subscribeHADeviceEvents() {// This runs 10 secs after above currently
 	mqtt.subscribeTopic(atomicState.HA+'/switch/+/state')
 	mqtt.subscribeTopic(atomicState.HA+'/light/+/state')
 	mqtt.subscribeTopic(atomicState.HA+'/light/+/brightness')
-    mqtt.subscribeTopic(atomicState.HA+'/sensor/+/friendly_name') // // this also creates device if device_class was missing
+        mqtt.subscribeTopic(atomicState.HA+'/sensor/+/friendly_name') // // this also creates device if device_class was missing
 	mqtt.subscribeTopic(atomicState.HA+'/sensor/+/state')// TODO spread /delay a bit
 	mqtt.subscribeTopic(atomicState.HA+'/sensor/+/unit_of_measurement')// TODO spread /delay a bit
 	mqtt.subscribeTopic(atomicState.HA+'/binary_sensor/+/friendly_name')  // TODO spread /delay a bit
