@@ -22,6 +22,8 @@ metadata {
 		command "ack", ["Integer"]
         command "setEventDelay",["Integer"]
 		command "reset"
+        command "connect"
+        command "disconnect"
 		command "setStateVar", ["String","String"]
         command "setLogLevel", ["Integer"]
         
@@ -78,7 +80,7 @@ def initialize() {
     if (MD5(location.hubs[0].getZigbeeId())=="ed9bb17f2f9c2e9b721e1df63cd383e8") state.myHub=true else state.myHub=false
     heartbeat()
     schedule("0/20 * * * * ? *", heartbeat)
-    version="beta 1"
+    version="beta 1a"
     if (state.delay==null) state.delay=250 // inter state.maxImmediate event pacing in mS
 
 //    sendEvent (name: "Status", value: "disconnected" , isStateChange: true)
@@ -89,6 +91,10 @@ def initialize() {
     sendEvent (name: "Subscribes", value: state.subs++)
 	state.continue=false	
     if (state.normHubName==null) state.normHubName = "temporary"
+    //connect()
+}
+
+def connect() {
     log  ("Initialise MQTT","DEBUG")
 	//state.connectionAttempts = 0
     mqttStatus=false
@@ -97,15 +103,15 @@ def initialize() {
         log ("MQTT connect failed attempt:[$state.connectionAttempts], try again in 10 secs","INFO")
         pauseExecution(10000)  // 10 second pause // TODO refine with increasing periods
         mqttStatus=mqttConnect()
-}
-        mqttState=interfaces.mqtt.isConnected()
+    }
+    mqttState=interfaces.mqtt.isConnected()
     if (mqttState) {
         log ( "Connected to MQTT broker ${settings?.MQTTBroker}","BLUE")
         subscribeTopic ('homie/'+state.normHubName+'/$implementation/heartbeat')
         state.connectionAttempts = 0
         state.seq2=0
     }
-    else log ("MQTT not connected","ERROR")
+    else log ("MQTT not connected","ERROR")      
 }
 
 void setEventDelay (delaymS) {
@@ -460,7 +466,7 @@ def parse(String description) {
                 return evt3
 			}
 			else if (topic[3]=='state'){
-				def evt4 = createEvent(name: "OnOff", value: topic[2], data: [status: payload[0],seq: sequence, update: true], isStateChange: true)  //, key2: payload])
+				def evt4 = createEvent(name: "OnOff", value: topic[2], data: [status: payload[0], type: topic[1], seq: sequence, update: true], isStateChange: true)  //, key2: payload])
 				pause (delay) // pace
 				state.dispatch = now()
                 return evt4
@@ -506,7 +512,7 @@ def parse(String description) {
                 return evt3
 			}
 			else if (topic[3]=='state'){
-				def evt4 = createEvent(name: "InputBoolean", value: topic[2], data: [status: payload[0],seq: sequence,update: true,,topic: topicFull], isStateChange: true)  //, key2: payload])
+				def evt4 = createEvent(name: "InputBoolean", value: topic[2], data: [status: payload[0],type: topic[1],seq: sequence,update: true,topic: topicFull], isStateChange: true)  //, key2: payload])
 				pause (delay) // pace
 				log ("Device ${topic[2]} is a HA input boolean and is " +payload[0], "TRACE")
 				state.dispatch = now()
@@ -927,6 +933,18 @@ def reset()
         }
 		log ("Resetting MQTT connection", "INFO")
 		initialize()
+        connect()
+	}
+
+def disconnect()
+	{
+        try {
+        	interfaces.mqtt.disconnect()
+            log ("Disconnected MQTT", "INFO")
+            sendEvent (name: "presence", value: "not present")
+        } catch(e) {
+            log ("Disconnecting failed : ${e.message}", "WARN")
+        }
 	}
 	
 def setStateVar(var,value,value2=null) {	//DEPRECATED // Better to expose as attributes 
