@@ -160,6 +160,8 @@ click 'Update then 'Next' and 'Next' and then 'Done'
 
 These devices will now update status changes to MQTT and be controllable from MQTT, using .../set appended topic.
 
+NB: (update) It appears the 'Everything' dropdown is not publishing devices corerctly to homie so please use the individual drop down for the capabiliities where possible. 
+
 ** A quick explanation on 'capabilities': When you select a device in a capability dropdown that device will publish just the drop downs capabilities to MQTT - not all the capabilities it might have.  So only some of the devices 'capabilities' might be reported to MQTT. Therefore make sure all the capabilities that you wish are enabled for that device, by selecting it in several drop downs, or to select every capability a device has use the 'Everything (all capabilities/attributes) drop down at the top and select your device.  For example some motion sensors provide motion, temperature, battery and light sensors. That's 4 capabilities, each individually selectable.
 __________________________________________________________________________________________________________________________
 # b) Enable automatic discovery of HE devices by other controllers (e.g OpenHAB) using homie3 protocol
