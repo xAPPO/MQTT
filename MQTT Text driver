@@ -9,11 +9,13 @@ metadata
 		capability "Telnet"  // temporary kludge
 		capability "Notification"
         capability "Actuator"
+        capability "Battery"
         //capability "Switch"
         
 
         
 		attribute "text", "string"
+        attribute "battery", "number"
 		attribute "sensor","string"
 		attribute "mqtt","string"
         attribute "stateOn","string"
@@ -27,6 +29,7 @@ metadata
         
         command "updateText", ["String"]
 		command "setStateTopic", ["String"]
+        command "setBattery", ["Integer"]
         command "setText", ["String"]
         command "forceText", ["String"]
         command "setTextTopic", ["String"]
@@ -147,6 +150,16 @@ def setPrefix(prefix)
     sendEvent(name: "textPrefix", value: prefix,isStateChange: true)
 }
 
+def setBattery(level)
+{
+   // if ((level>=0)&&(level<=100)){
+        sendEvent(name: "battery", value:level,isStateChange: true)
+        setSuffix(" %")
+        setPrefix (" ")
+        forceValue(level.toString())
+   // }
+}
+
 
 def setText(String display){
 	//sendEvent(name: "text", value: display,isStateChange: true) 
@@ -216,8 +229,8 @@ def forceValue (String value)
 	//log.trace  "Text Device was set to ${value}"
     //sendEvent(name: "Notify", value: state.statePrefix + value + state.stateSuffix,isStateChange: true)
  
-	if (device.currentValue("textPrefix") !=" ") value = device.latestValue("textPrefix") + value
-	if (device.currentValue("textSuffix") != " ") value = value + device.latestValue("textSuffix") 
+	if ((device.currentValue("textPrefix") !=" ")&&(device.currentValue("textPrefix") !=null)) value = device.latestValue("textPrefix") + value
+	if ((device.currentValue("textSuffix") != " ")&&(device.currentValue("textPrefix") !=null)) value = value + device.latestValue("textSuffix") 
     if (state.type=="manual") sendEvent(name: "changeText", value: display,  data: [topic: device.currentValue("textCmdTopic")],isStateChange: true)
 
 	sendEvent(name: "text", value: value, isStateChange: true)
