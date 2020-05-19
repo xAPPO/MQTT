@@ -1,5 +1,7 @@
 IN PROGRESS  THIS IS NOT UPDATED FOR BETA 3 yet, but will be shortly
 
+There are significant differences in the MQTT Client driver installation (ignore the below ones)
+
 Please read the first few posts in the topic thread here.
 
 https://community.hubitat.com/t/mqtt-beta3/38013
