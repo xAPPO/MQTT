@@ -6,8 +6,6 @@ Please read the first few posts in the topic thread here.
 
 https://community.hubitat.com/t/mqtt-beta3/38013
 
-See also the MQTT beta instructions.pdf file in the repository which has more content.
-
 This has been 'mostly' updated now for the beta release - please let me know any issues or suggestions
 
 Later / release version of this read me will contain appropriate screenshots rather than just being text based
