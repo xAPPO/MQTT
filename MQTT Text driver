@@ -2,7 +2,7 @@
 metadata 
 {
 
-	definition (name: "MQTT Text", namespace: "ukusa", author: "Kevin Hawkins",importUrl: "https://raw.githubusercontent.com/xAPPO/MQTT/beta3/MQTT%20Text%20driver")
+	definition (name: "MQTT Text", namespace: "ukusa", author: "Kevin Hawkins",importUrl: "https://raw.githubusercontent.com/xAPPO/MQTT/beta3/MQTT%20Text%20driver")  
 	{
 		capability "Sensor"
 		capability "Refresh"
