@@ -1,4 +1,8 @@
-IN PROGRESS
+IN PROGRESS  THIS IS NOT UPDATED FOR BETA 3 yet, but will be shortly
+
+Please read the first few posts in the topic thread here.
+
+https://community.hubitat.com/t/mqtt-beta3/38013
 
 See also the MQTT beta instructions.pdf file in the repository which has more content.
 
