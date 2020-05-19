@@ -42,7 +42,7 @@ definition(
 	name: "MQTT",
 	namespace: "ukusa",
 	author: "Kevin Hawkins",
-	importUrl: "https://raw.githubusercontent.com/xAPPO/beta3/MQTT%20app",
+	importUrl: "https://raw.githubusercontent.com/xAPPO/MQTT/beta3/MQTT%20app",
 	description: "Links MQTT with HE devices",
 	category: "Intranet Connectivity",
 	iconUrl: "https://s3.amazonaws.com/smartapp-icons/Convenience/App-BigButtonsAndSwitches.png",
