@@ -4234,7 +4234,7 @@ def sensorDevices(evt, name=null, type=null, state=null, device=null, multiple=f
 				UOM="watts"
 			}
 			else if (xType=='illuminance'){
-				category='measure-light'   // value and unit enum lux
+				category='measure-illuminance'   // value and unit enum lux
                 mqtt.publishMsg (sTopic+'/'+category+'/$datatype',"integer",1,true,atomicState.suppress)
 				mqtt.publishMsg (sTopic+'/'+category+'/$unit','Lux',1,true,atomicState.suppress)
 				mqtt.publishMsg (sTopic+'/'+category+'/$format','0:999999',1,true,atomicState.suppress)
