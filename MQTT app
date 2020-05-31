@@ -4223,7 +4223,16 @@ def sensorDevices(evt, name=null, type=null, state=null, device=null, multiple=f
         mqtt = getChildDevice("MQTT: Child device driver")
 		if (settings?.homiePublish) {  //TODO use case rather than if else if
 			sTopic="homie/${atomicState.normHubName}/${normName}"            
-			if (xType=='motion' || xType=='acceleration'){
+//			if (xType=='motion' || xType=='acceleration'){
+        if (xType=='switch'){  
+			category='onoff'
+			HAtype="switch"
+			if (!atomicState.suppress) {
+				mqtt.publishMsg (sTopic+'/'+category+'/$datatype','boolean',1,true,atomicState.suppress)
+				mqtt.publishMsg (sTopic+'/'+category+'/$settable','true',1,true,atomicState.suppress)	
+			}
+		}
+		else if (xType=='motion' || xType=='acceleration'){
 				category=xType
 				if (!atomicState.suppress) mqtt.publishMsg (sTopic+'/'+category+'/$datatype',"boolean",1,true,atomicState.suppress)
 				HAtype="binary_sensor"
