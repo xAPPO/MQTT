@@ -42,7 +42,7 @@ definition(
 	name: "MQTT",
 	namespace: "ukusa",
 	author: "Kevin Hawkins",
-	importUrl: "https://raw.githubusercontent.com/xAPPO/MQTT/beta3/MQTT%20app",
+	importUrl: "https://raw.githubusercontent.com/GledholtHall/beta-3/master/MQTT%20app",
 	description: "Links MQTT with HE devices",
 	category: "Intranet Connectivity",
 	iconUrl: "https://s3.amazonaws.com/smartapp-icons/Convenience/App-BigButtonsAndSwitches.png",
@@ -348,7 +348,7 @@ input(name: "dMode", type: "enum", title: "Method to add device attribute topics
 
                     if (dMode=="Assisted from MQTT") assisted=true else assisted=false
 */
-assisted=false   // beta2 .. disabling this feature temporarily as confusing
+assisted=false   // beta2 and beta3 .. disabling this feature temporarily as confusing
                     if (assisted) input (name: "devWildcard", type: "text", title: "Please enter a wildcarded topic encompassing the whole device but no others", submitOnChange: true)
                     if ((assisted) && (devWildcard != null)) {
 
@@ -1047,7 +1047,7 @@ def initialize() {
     else if (myID=="8e703d9adefe69d652315cf6159671b7") atomicState.myHub=true //42
     else if (myID=="e947798518d8f4b041d701d122c38b30") atomicState.myHub=true //44
     else if (myID=="1234") atomicState.myHub=true  //43 TODO UPDATE THIS ONE
-atomicState.myHub=false
+//atomicState.myHub=false
     countTry=5
     aborting=false
     atomicState.abort=false  // just added remove later
@@ -1168,7 +1168,7 @@ atomicState.myHub=false
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$name',settings?.hubName,1,true)
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$mac','BB:AA:DD:AA:55:55',1,true,atomicState.suppress)
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$localip','1.2.3.4',1,true,atomicState.suppress)
-		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$implementation/version','beta 3',1,true,atomicState.suppress)
+		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$implementation/version','beta 3a',1,true,atomicState.suppress)
         if (modes) currentMode()
 	//}
 
@@ -1497,6 +1497,31 @@ def deviceEventSubscribes() {   // This raises subscriptions for all enabled dev
     subscribe(var_VirtualColorTemperatureLight, "switch", switchedDim)  // ??
     subscribe(var_VirtualRGBLight, "switch", switchedDim)
     subscribe(var_VirtualRGBWLight, "switch", switchedDim)
+    subscribe(var_VirtualGarageDoorController, "contact", otherDevices)  //check
+    subscribe(var_VirtualGarageDoorController, "door", otherDevices)  //check
+    subscribe(var_VirtualLock,"lock",locked)  //check
+
+/*
+    subscribe(var_RM Connector Variable,what,what)
+    subscribe(var_MQTT Text,what,what)
+    subscribe(var_Virtual audioVolume,what,what)
+    subscribe(var_Virtual Button,what,what)
+    subscribe(var_Virtual CO Detector,what,what)
+    subscribe(var_Virtual Contact Sensor,what,what)
+    subscribe(var_Virtual Fan Controller,what,what)
+    subscribe(var_Virtual Humidity Sensor,what,what)
+    subscribe(var_Virtual Illuminance Sensor,what,what)
+    subscribe(var_Virtual Moisture Sensor,what,what)
+    subscribe(var_Virtual Motion Sensor,what,what)
+    subscribe(var_Virtual Multi Sensor,what,what)
+    subscribe(var_Virtual Omni Sensor,what,what)
+    subscribe(var_Virtual Presence,what,what)
+    subscribe(var_Virtual Shade,what,what)
+    subscribe(var_Virtual Smoke Detector,what,what)
+    subscribe(var_Virtual Temperature Sensor,what,what)
+    subscribe(var_Virtual Thermostat,what,what)
+*/
+
 /*					   
     // adhoc events from driver
 	subscribe(adhoc,"OnOff",onoffEvent)
@@ -3203,10 +3228,10 @@ def switched(evt, name=null, type=null, state=null,device=null) {
 		xName=evt.name
         // need to determine if MQTT caused this or HE
         
-		log ("From MQTT ? [$device] $atomicState.lastDev  $name [$state]", "LOG")																  
+		//log ("From MQTT ? [$device] $atomicState.lastDev  $name [$state]", "LOG")																  
         if (atomicState.lastDev== "$name [$state]") {
             atomicState.lastDev=''
-            log("Wiping atomicState.lastdev","LOG")
+            //log("Wiping atomicState.lastdev","LOG")
         }
         else {
             dType = device.getTypeName()
@@ -3895,11 +3920,12 @@ def keypadDevices(evt, name=null, type=null, state=null, device=null, multiple=f
 	else if (settings?.HADiscovery) log ("HADiscovery sensor discarded for ${name}","DEBUG")    
 }
 
-
+/*
 def garageDevices(evt, name=null, type=null, state=null, device=null, multiple=false) {  // subs must be used in HA discovery as device must be separated into multiple entities 
     id=99998888
     otherdevices(evt, name, type, state, device, multiple)
 }
+*/
 
 def audioDevices(evt, name=null, type=null, state=null, device=null, multiple=false) {
     if (evt!=null)
@@ -3992,14 +4018,57 @@ def audioDevices(evt, name=null, type=null, state=null, device=null, multiple=fa
 
     
 def otherDevices(evt, name=null, type=null, state=null, device=null, multiple=false) {  // subs must be used in HA discovery as device must be separated into multiple entities 
-	if (evt!=null)
+	mqtt = getChildDevice("MQTT: Child device driver")
+    if (evt!=null)
 	{
 		name=evt.displayName
         device=evt.getDevice()
 		state=evt.value
 		xType=evt.name  // attribute name
-		log ("otherDevices got called by event ${name} with ${state}   ${evt.getDevice()}  ${evt.device.typeName} ${xType} ${evt.getDisplayName()}", "DEBUG")
-	} 
+        log ("otherDevices got called by event [$xType] ${name} with ${state}   ${evt.getDevice()}  ${evt.device.typeName} ${evt.getDisplayName()}", "DEBUG")
+        
+		xName=evt.name
+		log ("Device other ${state}  ${name}", "DEBUG")
+        log ("lastDev is $atomicState.lastDev        $name [$state]","LOG")
+        if (state=='closed') state='close'  // treat them the same
+        if (atomicState.lastDev== "$name [$state]") atomicState.lastDev=''
+        else {
+            dType = device.getTypeName()
+            if (dType.startsWith("Virtual")) // only allow commands to MQTT from virtuals
+            {
+                cMQTT=device.getDataValue("mqtt")
+                if (cMQTT=="enabled") {
+                    if (xType=='contact') {
+                        cTopic=device.getDataValue("contact_Cmd")
+                        if (cTopic=='' || cTopic==' ' || cTopic==null) return
+                        maps=device.getDataValue("contact_MAP")
+                        mapList = stringToList(maps)
+                        (cTopic,b,state)=jsonSplit(cTopic,evt.value)
+                        if(cTopic!=null) {
+                            if (state=='closed') state= mapList[0] else state = mapList[1]
+                            log ("(ccc) Sending other [contact=$state] command to MQTT $cTopic","KH")
+                            mqtt.publishMsg (cTopic,state,1,false)
+                        }
+                    }
+                    else if (xType=='door') {
+                        cTopic=device.getDataValue("door_Cmd")
+                        if (cTopic=='' || cTopic==' ' || cTopic==null) return
+                        //log.error "CTopic is #$cTopic#"
+                        maps=device.getDataValue("door_MAP")
+                        mapList = stringToList(maps)
+                        (cTopic,b,state)=jsonSplit(cTopic,evt.value)
+                        if(cTopic!=null) {
+                            if (state=='closing') state= mapList[0] else state = mapList[1]
+                            log ("(cdc) Sending other [door=$state] command to MQTT $cTopic","LOG")
+                            mqtt.publishMsg (cTopic,state,1,false)
+                        }
+
+                        
+                    }
+                }
+	        }        
+	    } 
+    }
 	else {
 		xType=type
 		if (multiple) nameSuffix='_'+type else nameSuffix=''
@@ -4010,7 +4079,6 @@ def otherDevices(evt, name=null, type=null, state=null, device=null, multiple=fa
         normName = normalize(name)
 		normxName = normalize(xName)
         settable="false"
-        mqtt = getChildDevice("MQTT: Child device driver")
         // log ("otherDevices called with ${name}/${xType}  ${state.toString()}", "ERROR")
 		HAtype='unknown'
         category=xType
@@ -4021,12 +4089,12 @@ def otherDevices(evt, name=null, type=null, state=null, device=null, multiple=fa
 				category='motion'
                 HAtype="binary_sensor"
             }
-           if (xType=='alarm'){  //TODO
+           else if (xType=='alarm'){  //TODO
 				category='alarm'
                 dType='alarm'
                 category='alarm'        
             }
-           if (xType=='contact'){  //TODO
+           else if (xType=='contact'){  //TODO
 				category='contact'
                 settable="true"
                 dType='contact'
@@ -4034,7 +4102,7 @@ def otherDevices(evt, name=null, type=null, state=null, device=null, multiple=fa
                 mqtt.publishMsg (sTopic+'/'+category+'/$format','[open,close,closed]',1,true,atomicState.suppress)
                 mqtt.publishMsg (sTopic+'/'+category+'/$datatype',"enum",1,true,atomicState.suppress)
             }
-            if (xType=='cover'){  //TODO
+            else if (xType=='cover'){  //TODO
 				category='cover'
                 settable="true"
                 dType='cover'
@@ -4042,7 +4110,7 @@ def otherDevices(evt, name=null, type=null, state=null, device=null, multiple=fa
                 mqtt.publishMsg (sTopic+'/'+category+'/$format','[open,close,closed]',1,true,atomicState.suppress)
                 mqtt.publishMsg (sTopic+'/'+category+'/$datatype',"enum",1,true,atomicState.suppress)
             }
-           if (xType=='door'){  //TODO
+           else if (xType=='door'){  //TODO
 				category='door'
                 settable="false"
                 dType='door'
@@ -4050,14 +4118,14 @@ def otherDevices(evt, name=null, type=null, state=null, device=null, multiple=fa
                 mqtt.publishMsg (sTopic+'/'+category+'/$format','[open,closed,opening,closing]',1,true,atomicState.suppress)
                 mqtt.publishMsg (sTopic+'/'+category+'/$datatype',"enum",1,true,atomicState.suppress)
             }
-            if (xType=='valve'){  
+            else if (xType=='valve'){  
 				category='valve'
                 dType="valve"
                 mqtt.publishMsg (sTopic+'/'+category+'/$datatype',"enum",1,true,atomicState.suppress)
                 mqtt.publishMsg (sTopic+'/'+category+'/$format','[open,closed]',1,true,atomicState.suppress)
                 settable="true"
             }
-            if (xType=='variable'){  
+            else if (xType=='variable'){  
 				category='variable'
                 dType="variable"
                 mqtt.publishMsg (sTopic+'/'+category+'/$datatype',"string",1,true,atomicState.suppress)
@@ -5209,6 +5277,7 @@ def LookupAction(LookupID,value,json,deviceID) {
                   if ((val != null) && (val != "") && (val != " ")) {
                     if (key.endsWith ("_Topic")||(key.endsWith ("_Cmd"))) {  // Do we want to map command topics ??  //TODo I think I need a value comparison to data.topic
                       attr = key - "_Topic"
+                      attr = attr - "_Cmd"  
                       if (json==true) {
                           updateDeviceAttribute(device,attr,value)                          
                       }
@@ -5328,9 +5397,25 @@ def deviceAction (child,devType,value,attr=null)  {
             child.detected()
           }   
         }
+    else if (attr=="door"){
+    }
+    else if (attr=="contact"){
+        child.sendEvent(name:"door", value:value)
+        if ((mapList[0] == value )||(mapList[0]=='close' && value=='closed')) {
+            atomicState.lastDev="$device [close]"   // This normally updates to the last value on MQTT ie the MAP value
+            //child.close() // This only ever reports status
+            child.sendEvent(name:"contact", value:"closed")
+            //child.sendEvent(name:"door", value:value)           
+        }
+        else if (mapList[1] == value){
+            atomicState.lastDev="$device [open]"   // This normally updates to the last value on MQTT ie the MAP value
+            child.open()
+            child.sendEvent(name:"contact", value:"open")
+            //child.sendEvent(name:"door", value:value)
+        }
+    }
     else log ("No attribute [$attr] for $child - maybe _MAP value missing ?", "WARN")
-  //  }
-    
+  //  }   
 }    
 
 //#######################################################################################################################################
@@ -5471,6 +5556,9 @@ def sensorAction(child,devType,val,attr=null) {
     }
     else if (attr=="contact"){
         if (mapList[0] == val) child.close()
+        //log.error mapList[0]
+        //log.error val
+        //if (mapList[0] == 'close' || val =='closed') child.close()
         else if (mapList[1] == val) child.open()
     }
     else if (attr=="battery") { 
@@ -5651,656 +5739,7 @@ return true
 }
 
 // def cmdEvent (name,state,payload,cmd,topic) {  // 'set' command from homie for a Hubitat or manual device via Hubitat basic 
-def commandP_X (name,state,payload,cmd,topic) {  // 'set' command from homie for a Hubitat or manual device via Hubitat basic 
-	// TODO This has value and data transposed in the two versions for discovered and adhoc .. tidy up
-	//def data = parseJson(evt.data)
-	log ("MQTT set command received for " + name + " " + cmd + " " + state,"INFO")
-	normName=name
-    matchName=name
-    found=false
-    cTime=now()
-    mqtt = getChildDevice("MQTT: Child device driver")
-    //     DNI=atomicState.newMap[normName]
-    log ("$cmd received $state","TRACE") 
-	if (atomicState.nameMap[normName]==null){
-		log ("No name map for ${normName} so assume Hubitat basic topic or homie /hub", "INFO") // could check from topic.topic[0]
-		matchName=normName
-	 }
-    else {
-        matchName=atomicState.nameMap[normName]
-        found=true   
-    }
-    log ("$cmd received $state","TRACE")
-    dMatch=false
-    everyThing== (settings?.everything)
-        log ("Everything Lookup for  "+ name + " is " + matchName + " [" + atomicState.nameMap[index] +"] ","LOG")
-        every=false
-        everything.any {
-            if (it.displayName==matchName){
-                every=true
-                log ("[$matchName] is an 'everything' device","KH")
-            }
-        }
 
-    if (matchName=="hub"){
-        if (cmd=="mode") {         
-	        if (location.mode != state) {
-		        if (location.modes?.find{it.name == state}) {
-			        location.setMode(state)
-		        } 
-            else {
-			    log ( "Hub Mode Cmd: unknown mode $state","ERROR")
-		        }
-	        }
-        }
-        return
-    } 
-    
-    
-	else if (cmd=="onoff" || cmd=="switch") {  // TODO convert to select / case   'switch' comes from RGB devices
-        log ("Was here in commanP","WARN")
-        everyThing== (settings?.everything)
-        log ("Everything Lookup for  "+ name + " is " + matchName + " [" + atomicState.nameMap[index] +"] ","LOG")
-        everything.any {
-            if (it.displayName==matchName){
-                dMatch=true
-                proceed=dAttIsEnabled(it,cmd)
-                if (!proceed) {
-                    log ("$device: ../onoff/set BLOCKED","WARN")
-                    return
-                }
-                log ("Everything - Surmising required state [" +state+"] for " + name,"TRACE")
-				OnValues="on,true,yes,1"  
-				OffValues="off,false,no,0"
-                
-				if (OnValues.contains(state.toLowerCase()))
-				{
-					it.on()
-				}
-				else if (OffValues.contains(state.toLowerCase()))
-				{
-					it.off()
-				}
-				else log ("Unknown state value " + state +" - need to add to lookup","WARN")
-                dMatch=true
-                      }
-            return dMatch
-        }
-        if (dMatch) return   
-            
-		MQTTswitches = (settings?.switches)
-		log ("Switch Lookup for  "+ name + " is " + matchName + " [" + atomicState.nameMap[index] +"] ","TRACE")
-		MQTTswitches.any { 
-			//if (normalize(it.displayName)==matchName){
-            if (it.displayName==matchName){
-				// DUPLICATED TODO combine this as one method for all
-				log ("Surmising required state [" +state+"] for " + name,"TRACE")
-				OnValues="on,true,yes,1"  
-				OffValues="off,false,no,0"
-				if (OnValues.contains(state.toLowerCase()))
-				{
-					it.on()
-				}
-				else if (OffValues.contains(state.toLowerCase()))
-				{
-					it.off()
-				}
-				else log ("Unknown state value " + state +" - need to add to lookup","WARN")
-                dMatch=true
-			}
-            return dMatch
-		}
-        if (dMatch) return
-		MQTTdimmers = (settings?.dimmers)
-		log ("Dimmer Lookup for  "+  name + " is " + matchName + " [" + atomicState.nameMap[index] +"] ","TRACE")
-		MQTTdimmers.each {  
-			//if (normalize(it.displayName)==matchName){
-            if (it.displayName==matchName){
-			// TODO combine this below as one method for all
-				log ("Surmising required state [" +state+"] for " + name,"TRACE")
-				OnValues="on,true,yes,1"  
-				OffValues="off,false,no,0"
-				if (OnValues.contains(state.toLowerCase()))
-				{
-					it.on()
-				}
-				else if (OffValues.contains(state.toLowerCase()))
-				{
-					it.off() 
-				}
-				else log ("Unknown state value " + state +" - need to add to lookup","WARN")
-                dMatch=true
-			}
-            return dMatch
-		}
-        if (dMatch) return
-		MQTTRGB = (settings?.colour)
-		//log ("ColourC Lookup for  "+  name + " is " + matchName + " [" + atomicState.nameMap[index] +"] ","TRACE")
-        
-		MQTTRGB.each {
-             log ("ColourC Lookup for  "+ name + " is " + matchName + "  " + it.displayName +  " [" + atomicState.nameMap[index] +"] ","TRACE")
-		    //if (normalize(it.displayName)==matchName){
-            if (it.displayName==matchName){
-			// TODO combine this below as one method for all
-				log ("Surmising required state [" +state+"] for " + name,"DEBUG")
-				OnValues="on,true,yes,1"  
-				OffValues="off,false,no,0"
-				if (OnValues.contains(state.toLowerCase()))
-				{
-					it.on()
-				}
-				else if (OffValues.contains(state.toLowerCase()))
-				{
-					it.off()
-				}
-				else log ("Unknown state value " + state +" - need to add to lookup","WARN")
-                dMatch=true
-			}
-            return dMatch
-		}
-        if (dMatch) return
-        
-		MQTTRGBT = (settings?.colourT)
-    	//log ("ColourT Lookup for  "+  name + " is " + matchName + " [" + atomicState.nameMap[index] +"] ","TRACE")
-		MQTTRGBT.each {  
-		    //if (normalize(it.displayName)==matchName){
-            if (it.displayName==matchName){
-			// TODO combine this below as one method for all
-				log ("Surmising required state [" +state+"] for " + name,"DEBUG")
-				OnValues="on,true,yes,1"  
-				OffValues="off,false,no,0"
-				if (OnValues.contains(state.toLowerCase()))
-				{
-					it.on()
-				}
-				else if (OffValues.contains(state.toLowerCase()))
-				{ 
-					it.off()
-				}
-				else log ("Unknown state value " + state +" - need to add to lookup","WARN")
-                dMatch=true
-
-			}
-            return dMatch
-		}
-        if (dMatch) return
-	}	
-	else if (cmd=="dim") {
-        openHAB=false
-        log ("Incoming dim /set $state","WARN")
-        val="${state}"
-        if (openHAB) intLevel=(Float.parseFloat(val) * 100).toInteger()
-		else intLevel=state.toInteger()
-		if ((0 <= intLevel)) //  && (intLevel <= 100)) //TODO Check removing this upper bound check doesn't break anything
-		{			
-			
-            everyThing== (settings?.everything)
-            log ("Everything Lookup for  "+ name + " is " + matchName + " [" + atomicState.nameMap[index] +"] ","LOG")
-            everything.any {
-              if (it.displayName==matchName){
-                  log ("Found " + it.displayName in everything, "KH")
-                  it.setLevel(intLevel,1)
-                  dMatch=true
-              }
-            return dMatch
-        }
-        if (dMatch) return
-  
-            log ("Dimmer Lookup for  "+  name + " is " + matchName + " [" + atomicState.nameMap[index] +"] ","TRACE")
-			MQTTdimmers = (settings?.dimmers)
-			MQTTdimmers.each {
-				//if (normalize(it.displayName)==matchName){
-                if (it.displayName==matchName){
-					log ("Found " + it.displayName, "TRACE")
-					it.setLevel(intLevel,1)
-                    dMatch=true
-				}
-                return dMatch
-			}
-            if (dMatch) return
-			MQTTRGB = (settings?.colour)
-			MQTTRGB.each { 
-				//if (normalize(it.displayName)==matchName){
-                if (it.displayName==matchName){
-			    it.setLevel(intLevel,1)
-                dMatch=true
-
-				}
-                return dMatch
-			}
-            if (dMatch) return
-            
-            MQTTRGB = (settings?.colourT)
-			MQTTRGB.each { 
-				//if (normalize(it.displayName)==matchName){
-                if (it.displayName==matchName){
-			    it.setLevel(intLevel,1)
-                dMatch=true
-				}
-                return dMatch
-			}
-            if (dMatch) return
-		}		
-	}
-            
-            else if (every) {
-                log ("This was an unhandled 'everything' device  [$matchName]  - exiting match","KH")
-            }
-                
-	else if (cmd=="color") {
-			MQTTRGB = (settings?.colour)
-			MQTTRGB.each {
-				//if (normalize(it.displayName)==matchName){
-                if (it.displayName==matchName){
-                    if (state[0]=='#') {
-                        try {
-                        RGB=hubitat.helper.ColorUtils.hexToRGB(state)
-                        HSV=hubitat.helper.ColorUtils.rgbToHSV(RGB)
-                        HSL=[:]
-                        HSL.put('hue',HSV[0].toInteger())
-                        HSL.put('saturation',HSV[1].toInteger())
-                        HSL.put('level',HSV[2].toInteger())
-                        it.setColor(HSL)
-                        }
-                        catch (e) {
-                            log ("#RRGGBB color /set error:  "+ e, "ERROR")
-                        }
-                        dmatch=true
-                    }
-                    else
-                    {
-                    colour=payload
-                        try {      
-                        hue=-1
-                        if (payload[0] != null) {
-                            float h = Float.parseFloat(payload[0])
-                            h = (h/3.6) + 0.5
-                            hue = (int) (h)
-                            if (hue>100) hue=100
-                            else if (hue<0) hue=0                            
-                        }
-                        sat=-1
-                        if (payload[1] != null) {
-                            float s = Float.parseFloat(payload[1]) + 0.5
-                            sat = (int) (s)
-                            if (sat>100) sat=100
-                            else if (sat<0) sat=0
-                        }
-			/*
-                        if (payload[2] != null) {
-                            float v = Float.parseFloat(payload[1]) + 0.5
-                            val = (int) (v)
-                            if (val>100) val=100
-                            else if (val<0) val=0
-                        }
-			*/
-			// (Untested change request)
-			if (payload[2] != null) {
-                        val = payload[2].toInteger()
-                        if (val>100) val=100
-                        else if (val<0) val=0
-                        }
-                        else val=-1
-                            
-            //
-                         
-                        log ("Color data is $payload   hue:$hue    sat:$sat    value:$val","TRACE")
-                            
-                        if (val==-1) { // from HA - has no 'level'
-                            if (hue>=0) it.setHue(hue)  
-                            if (sat>=0) it.setSaturation(sat)  
-                        }
-                        else if ((hue>=0)&&(sat>=0)&&(val>=0)) //all present
-                        {
-                            HSL=[:]                 
-                            HSL.put('hue',hue)
-                            HSL.put('saturation',sat)
-                            HSL.put('level',val)
-                            log ("HSL set value is $HSL","INFO")
-                            it.setColor(HSL)
-                            dMatch=true
-                        } 
-                        }
-                        catch (e) {
-                            log ("HSV colour set error format is h,s,v :  "+e ,"ERROR")
-                        } 
-                    }
-				}
-                return dMatch
-			}
-        if (dMatch) return
-    }	
-	else if (cmd=="hsv") {
-			MQTTRGB = (settings?.colour)
-			MQTTRGB.each {
-				//if (normalize(it.displayName)==matchName){
-                if (it.displayName==matchName){
-					it.setSaturation(payload[1].toInteger())
-					it.setHue(payload[0].toInteger())
-					it.setLevel(payload[2].toInteger())
-                    dMatch=true
-				}
-                return dMatch
-			}
-        if (dMatch) return
-    }
-
-    
-	else if (cmd=="hue") {
-			MQTTRGB = (settings?.colour)
-			MQTTRGB.each {
-				//if (normalize(it.displayName)==matchName){
-                if (it.displayName==matchName){
-					it.setHue(payload[0].toInteger())
-                    dMatch=true
-				}
-                return dMatch
-			} 
-        if (dMatch) return
-	}
-
-    
-	else if (cmd=="level") {  // currently only searching colour bulbs for this as it's a RGB event
-			MQTTRGB = (settings?.colour)
-			MQTTRGB.each { 
-				//if (normalize(it.displayName)==matchName){
-                if (it.displayName==matchName){
-					it.setLevel(payload[0].toInteger())
-                    dMatch=true
-				}
-                return dMatch
-			}
-        if (dMatch) return
-	}
-	else if (cmd=="saturation") {
-			MQTTRGB = (settings?.colour)
-			MQTTRGB.each { 
-				//if (normalize(it.displayName)==matchName){
-                if (it.displayName==matchName){
-					it.setSaturation(payload[0].toInteger())
-                    dMatch=true
-				}
-                return dMatch
-			}
-            if (dMatch) return
-	}
-	else if (cmd=="color-temperature") {  // This is from the homie topic       //TOD these on homie are normalised names - need to match as such i.e. as in thermostats below TODO BUG ??
-			MQTTRGBT = (settings?.colourT)
-			MQTTRGBT.each { 
-				//if (normalize(it.displayName)==matchName){
-                if (it.displayName==matchName){
-                    int cKelvin=state.toInteger()
-                    int cMired=0
-                    if (cKelvin>1000) cMired=(int)1000000/cKelvin // was Kelvin
-                    else { // wasalready  mireds
-                        cMired = cKelvin 
-                        cKelvin=(int)1000000/cMired
-                    }
-					it.setColorTemperature (cKelvin)
-                    dMatch=true
-					//colTopic=topic.topic.substring(0,topic.topic.length() - 4)  // TODO KLUDGE for time being
-                    //mqtt.publishMsg (colTopic,"${cKelvin}",1,settings?.homieStatesPersist)   // UGH setting reported value to set value for now
-                    //mqtt.publishMsg (colTopic+'/mireds'," ${cMired}",1,settings?.homieStatesPersist)    
-               }
-                return dMatch
-			}
-            if (dMatch) return
-	}  
- //Casey <
-	else if (cmd=="lock") {
-		MQTTlocks = (settings?.locks)
-		log ("Lock Lookup for  "+  name + " is " + matchName + " [" + atomicState.nameMap[index] +"] ","TRACE")
-		MQTTlocks.each {   
-			//if (normalize(it.displayName)==matchName){
-            if (it.displayName==matchName){
-				// DUPLICATED TODO combine this as one method for all
-				log ("Surmising required state [" +state+"] for " + name,"DEBUG")
-				LockValues="true"
-				UnlockValues="false"
-				if (LockValues.contains(state.toLowerCase()))
-				{
-					//if (devType == "system")
-					it.lock()  // think can only be a system type here
-					//else device.toON()
-				}
-				else if (UnlockValues.contains(state.toLowerCase()))
-				{
-                    if (settings?.allowMqttUnlock) {
-					    it.unlock() // think can only be a system type here                    
-                    } else {
-                        log ("To enable MQTT unlock, you must enable in MQTT app settings 'configuration'","WARN")
-                    }
-				}
-				else log ("Unknown state value " + state +" - need to add to lookup","WARN")
-                dMatch=true
-			}
-            return dMatch
-		}
-        if (dMatch) return
-    } 
-//Casey >        
-    else if (cmd=="contact") {
-		MQTTgarage = (settings?.garagedoors)
-		log ("Garage Door Lookup for  "+  name + " is " + matchName + " [" + atomicState.nameMap[index] +"] ","DEBUG")
-		MQTTgarage.each {            
-			//if (normalize(it.displayName)==matchName){
-            if (it.displayName==matchName){
-         	    // DUPLICATED TODO combine this as one method for all
-				log ("Surmising required state [" +state+"] for " + name,"DEBUG")
-				CloseValues="close"
-				OpenValues="open"
-				if (CloseValues.contains(state.toLowerCase()))
-				{
-					//if (devType == "system")
-					it.close()  // think can only be a system type here
-					//else device.toON()
-				}
-				else if (OpenValues.contains(state.toLowerCase()))
-				{
-                    //if (settings?.allowMqttUnlock) {
-					    it.open() // think can only be a system type here                    
-                   // } else {
-                   //     log ("To enable MQTT unlock, you must enable in MQTT app settings 'configuration'","WARN")
-                   // }
-				}
-				else log ("Unknown state value " + state +" - need to add to lookup","WARN")
-                dMatch=true
-		    }
-            return dMatch
-        }
-        if (dMatch) return
-		MQTTwindow = (settings?.windowshades)
-		log ("Window Shade Lookup for  "+  name + " is " + matchName + " [" + atomicState.nameMap[index] +"] ","DEBUG")
-        MQTTwindow.each {            
-		 //if (normalize(it.displayName)==matchName) {
-            if (it.displayName==matchName){
-			    // DUPLICATED TODO combine this as one method for all
-				log ("Surmising required state [" +state+"] for " + name,"DEBUG")
-				CloseValues="close"
-				OpenValues="open"
-				if (CloseValues.contains(state.toLowerCase()))
-				{
-					//if (devType == "system")
-					it.close()  // think can only be a system type here
-					//else device.toON()
-				}
-				else if (OpenValues.contains(state.toLowerCase()))
-				{
-                    //if (settings?.allowMqttUnlock) {
-					    it.open() // think can only be a system type here                    
-                   // } else {
-                   //     log ("To enable MQTT unlock, you must enable in MQTT app settings 'configuration'","WARN")
-                   // }
-				}
-				else log ("Unknown state value " + state +" - need to add to lookup","WARN")
-                dMatch=true
-			}
-            return dMatch
-        }
-      if (dMatch) return
-	}
-
-
-
-	else if (cmd=="battery"||cmd=="motion"||cmd=="temperature") {
-		log ("Trying to 'set' a sensor value ${cmd} for $name", "WARN")
-		log ("   ... only 'onoff' 'dim' 'color' 'color-temperature' 'window shades' 'valve' 'garage doors'and 'locks' are settable currently", "WARN")
-	}
-	else if (cmd=="valve") {
-        MQTTvalve = (settings?.valves)
-		log ("Valve Lookup for  "+  name + " is " + matchName + " [" + atomicState.nameMap[index] +"] ","DEBUG")
-        MQTTvalve.each {            
-		 //if (normalize(it.displayName)==matchName) {
-            if (it.displayName==matchName){
-                // DUPLICATED TODO combine this as one method for all
-				log ("Surmising required state [" +state+"] for " + name,"DEBUG")
-				CloseValues="closed"
-				OpenValues="open"
-				if (CloseValues.contains(state.toLowerCase()))
-				{
-					// if (devType == "system")
-					it.close()  // think can only be a system type here
-					//else device.toON()
-				}
-				else if (OpenValues.contains(state.toLowerCase()))
-				{
-                    //if (settings?.allowMqttUnlock) {
-					    it.open() // think can only be a system type here                    
-                   // } else {
-                   //     log ("To enable MQTT unlock, you must enable in MQTT app settings 'configuration'","WARN")
-                   // }
-				}
-				else log ("Unknown state value " + state +" - need to add to lookup","WARN")
-                dMatch=true
-         }
-            return dMatch
-        }
-        if (dMatch) return
-	}
-    else if (cmd=="heating-setpoint"||cmd=="cooling-setpoint"||cmd=="mode"||cmd=="fanmode") {  // Thermostat temporary handler shouldnt be in sensors
-           	thermDev=(settings?.thermostats)
-	        if (thermDev != null){
-		        thermDev.each{                 
-                    //if (normalize(it.displayName)==matchName) {
-                    if (it.displayName==matchName){
-                        //log ("Changing $cmd of ${it.name} to $state","ERROR")                        
-                        if (cmd=="heating-setpoint"){
-                            Float setTemp = state.toFloat()  // string seemed to error -- just rechecking
-                            it.setHeatingSetpoint(setTemp)
-                            //it.setHeatingSetpoint(state)
-                        }
-                        else if (cmd=="cooling-setpoint") {
-                            setTemp = state.toFloat()
-                            //thermDev.setCoolingSetpoint(state)
-                            it.setCoolingSetpoint(setTemp)
-                        }
-                        else if (cmd=="mode") it.setThermostatMode(state)
-                        else if (cmd=="fanmode") it.setThermostatFanMode(state)
-                    dMatch=true
-                    }
-                    return dMatch
-                }
-           }
-           else log ("No matching thermostat found for command $cmd for $name", "WARN")
-        if (dMatch) return
-    }
-    else if (cmd=="securitymode"){
-        if (state=='----') return
-// >> @jwilliams
-    	Keypads = (settings?.keypads)
-			Keypads.each {
-				 //if (normalize(it.displayName)==matchName) {
-                if (it.displayName==matchName){
-					setStatus=""
-					ArmValues="armed night, armed home, armed away"
-                    if (ArmValues.contains(state.toLowerCase())) {		
-                        if (mqttKeypadMode == "No Keycode Needed") {
-				    		setStatus = state
-				    	}
-				    	else if ((mqttKeypadMode == "Keycode to Arm only" || mqttKeypadMode == "Keycode to Arm/Disarm") && mqttKeypadCode == payload[1]) {
-				    		setStatus = state
-				    	}
-				    } 
-				    else if (state == "disarm") {
-				    	if (mqttKeypadMode == "Keycode to Arm/Disarm") {
-				    	    if (mqttKeypadCode == payload[1]) setStatus = 'disarm'
-				    	} 
-				    	else if (mqttKeypadMode != "No control of keypad") {
-				    	    setStatus = 'disarm'
-				    	}
-				    	
-				    } 				    
-				    log ("Setting Status to ${setStatus}","DEBUG")	    
-                    if (setStatus=='armed night') it.armNight()
-                    else if (setStatus=='armed home') it.armHome()
-                    else if (setStatus=='armed away') it.armAway()
-                    else if (setStatus=='disarm') it.disarm()                
-// << @jwilliams             
-                    else {
-                         String code = it.currentLockCodes.toString()
-                         mqtt.publishMsg ("homie/${atomicState.normHubName}/${matchName}/securitymode/set",'----',1,false)
-                        //if (code.contains(':"' + state + '"}')) it.disarm()
-                        if (code.contains('{"name":"MQTT","code":"'+state+'"}')) it.disarm()
-                    }
-                    dMatch=true
-				}
-                return dMatch
-			}
-        if (dMatch) return
-    }    
-    else if (cmd=="variable"){
-       gVariables =(settings?.gVars)
-            gVariables.each {
-				//if (normalize(it.displayName)==matchName){
-                if (it.displayName==matchName){
-                  it.setVariable (state)
-                    dMatch=true
-				}
-                return dMatch
-			}
-        if (dMatch) return
-       gVariables =(settings?.globVars)
-            gVariables.each {
-				//if (normalize(it.displayName)==matchName){
-                if (it.displayName==matchName){
-                  it.setVariable (state)
-                    dMatch=true
-				}
-                return dMatch
-			} 
-        if (dMatch) return
-    }
-    else if (cmd=="speech"){
-        speechDev=(settings?.speechsynthesis)
-	        if (speechDev != null){
-		        speechDev.each{
-                    //if (normalize(it.displayName)==matchName) {
-                    if (it.displayName==matchName){
-                      it.speak(state,30)
-                        dMatch=true
-                    }
-                    return dMatch
-                }
-            if (dMatch) return
-            }
-    }
-    else if (cmd=="music"){
-        musicDev=(settings?.musicplayers)
-	        if (musicDev != null){
-		        musicDev.each{
-                    //if (normalize(it.displayName)==matchName) {
-                    if (it.displayName==matchName){
-                        log ("Music Command not yet implemented " + musicDec + " [" + state + "}","WARN")
-                        dMatch=true
-                    }
-                    return dMatch
-                }
-            if (dMatch) return
-            }
-    }
-        
-	else log ("No matching devices with this command available for ${cmd} for $name $state", "WARN")
-}
 
 
 def extractInt( String input ) {
@@ -6888,9 +6327,8 @@ def commandP(name, state, payload, cmd, topic) { // 'set' command from homie for
     if (matchName == "hub") {
         if (cmd == "mode") {
             if (location.mode != state) {
-                if (location.modes?.find {
-                        matchDevice.name == state
-                    }) {
+                if (location.modes?.find {it.name==state}) 
+                {
                     location.setMode(state)
                 } else {
                     log("Hub Mode Cmd: unknown mode $state", "ERROR")
@@ -7071,6 +6509,7 @@ def commandP(name, state, payload, cmd, topic) { // 'set' command from homie for
                 OpenValues = "open"
                 if (CloseValues.contains(state.toLowerCase())) {
                     //if (devType == "system")
+                    log.error "here"
                     matchDevice.close() // think can only be a system type here
                     //else device.toON()
                 } else if (OpenValues.contains(state.toLowerCase())) {
@@ -7188,4 +6627,5 @@ def commandP(name, state, payload, cmd, topic) { // 'set' command from homie for
         }
     } else log("No matching devices with this command available for ${cmd} for $name $state", "WARN")
 }
+
 
