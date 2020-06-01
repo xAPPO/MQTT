@@ -2285,6 +2285,8 @@ def devLoop(deviceList, attribute, handler, type='none'){  // This registers a s
                 normName=normalize(myName)
             	sTopic="homie/${atomicState.normHubName}/${normName}"
                 mqtt.publishMsg (sTopic+'/-device-driver',dev.typeName,1,true)
+            
+            
                 def attrs = dev.supportedAttributes  //this gets all attributes in variable, custom etc
             if (type == 'none') type=attribute
 			if(dev.currentValue(attribute)!=null){
@@ -2318,8 +2320,9 @@ def devLoopAll(dev, attribute, handler, type='none'){  // This registers all att
                 normName=normalize(myName)
             	sTopic="homie/${atomicState.normHubName}/${normName}"
                 mqtt.publishMsg (sTopic+'/-device-driver',dev.typeName,1,true)
+                // iattrs = dev.supportedAttributesf (attribute=='all' && handler=="sensorDevices") { //Only use this for sensors - adds all attributes to device    
                 def attrs = dev.supportedAttributes
-            
+                if (attrs.size()>1) multiple=true else multiple=false // TODO BUG Need to handle multiple attributes here        //jeff      
                 if (attribute=='all' && handler=="sensorDevices") { //Only use this for sensors - adds all attributes to device
                     attrs.each { attr ->
                         sensorDevices(null, myName, "$attr", dev.currentValue("$attr"),dev,multiple)
