@@ -3,8 +3,7 @@
 import java.security.MessageDigest
 
 metadata {
-	// v0.5
-    definition (name: "MQTT Client", namespace: "ukusa", author: "Kevin Hawkins",importUrl: "https://raw.githubusercontent.com/xAPPO/MQTT/beta3/MQTT%20Client%20driver") {
+    definition (name: "MQTT Client", namespace: "ukusa", author: "Kevin Hawkins",importUrl: "https://raw.githubusercontent.com/xAPPO/MQTT/beta/MQTT%20Client%20driver") {
         capability "Initialize"
 		capability "Presence Sensor"
         //capability "Indicator"
@@ -70,6 +69,7 @@ def uninstalled() {
 }
 
 def initialize() {
+    state.myHub=false
     unschedule (heartbeat)
     state.seqNum=0
     state.seq=0
@@ -79,10 +79,10 @@ def initialize() {
     //state.maxImmediate=0 
     //state.maxComplete=0
     state.topic0="DoNoTmatch"
-    if (MD5(location.hubs[0].getZigbeeId())=="202cb962ac59075b964b07152d234b70") state.myHub=true else state.myHub=false
+    if (MD5(location.hubs[0].getZigbeeId())=="202cb962ac59075b964b07152d234b70") state.myHub=true
     heartbeat()
     schedule("0/20 * * * * ? *", heartbeat)
-    version="beta 3"
+    version="beta 3b"
     
 
 //    sendEvent (name: "Status", value: "disconnected" , isStateChange: true)
@@ -253,7 +253,9 @@ def subscribeTopic (String s) {
         else if (s.endsWith("client")) setStateWaiting ("client")
         log ("state.waiting is now $state.waiting","DEBUG")
             }
-	else log ("MQTT subscribing to: " + s, "INFO")
+    else {
+        log ("MQTT subscribing to: " + s, "INFO")
+    }
     mqttState=interfaces.mqtt.isConnected()
     if (mqttState){
         interfaces.mqtt.subscribe(s,1)
@@ -853,7 +855,9 @@ def parse(String description) {
 	else {  // unhandled parse messages arrive here
         //state.seq2++
         sequence=state.seq2.toString()
-		log ("ad hoc MQTT parse  ${interfaces.mqtt.parseMessage(description).topic}       ${payload[0]}", "LOG")
+        top=interfaces.mqtt.parseMessage(description).topic
+		if (!top.startsWith("SHAC/")) log ("ad hoc MQTT parse  $top       ${payload[0]}", "LOG")
+        log ("ad hoc MQTT parse  $top       ${payload[0]}", "TRACE")
         parent.lookupP(payload[0],interfaces.mqtt.parseMessage(description).payload,interfaces.mqtt.parseMessage(description).topic, json)  // replacement for event call
        // if (json=="true") sendEvent (name: "Lookup", value: interfaces.mqtt.parseMessage(description).payload, data: [topic: interfaces.mqtt.parseMessage(description).topic,seq: sequence,json: json], isStateChange: true)
 	   // else sendEvent (name: "Lookup", value: payload[0], data: [topic: interfaces.mqtt.parseMessage(description).topic,seq: sequence,json: json], isStateChange: true)
