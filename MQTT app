@@ -75,6 +75,8 @@ preferences {  // can't use atomicState vars in this section
 				input "tempUnits", "enum", title: "<b>Temperature units</b>", required: false, defaultValue: "Celsius x.xx°C", options: ["Celsius x.xx°C", "Celsius x.x°C", "Fahrenheit °F","Fahrenheit x.x°F"]
 				input "lengthUnits", "enum", title: "<b>Length units (not yet functional)</b>", required: false, defaultValue: "Metric (mm,m,km)", options: ["Metric (mm,m,km)", "Imperial (inches/feet/miles)"]
                 input "allowMqttUnlock", "bool", title: "<b>Allow Unlock via MQTT</b><br>WARNING: Setting this will allow unlocking locks via MQTT.  It is recommended that your MQTT instance requires username/password & is protected by SSL", required: false, defaultValue: false, submitOnChange: false
+                input "allowHSMDisarm", "bool", title: "<b>Allow HSM disarm via MQTT</b><br>WARNING: Setting this will allow HSM disarm via MQTT, provided 'Allow HSM control' is ON", required: false, defaultValue: false, submitOnChange: false
+                input "allowHSMControl", "bool", title: "<b>Allow HSM control via MQTT</b><br>WARNING: Setting this will allow all HSM control via MQTT (except disarming if 'Allow HSM disarm' is OFF)", required: false, defaultValue: false, submitOnChange: false
                 input "mqttKeypadMode", "enum", title: "<b>Allow Keypad control and specify when a code is needed</b><br>WARNING: Setting this will allow controlling Keypade code via MQTT.  It is recommended that your MQTT instance requires username/password & is protected by SSL", required: false, defaultValue: "No control of keypad", options: ["No control of keypad", "No Keycode needed", "Keycode to Arm only","Keycode to Arm/Disarm"]
 				input name: "mqttKeypadCode", type: "text", title: "Keypad Code", description: " Code to be used via HA", submitOnChange: false, required: false
             }
@@ -1183,6 +1185,7 @@ def initialize() {
     }
     
     subscribeVirtuals()  // this subscribes to any adhoc virtuals we have created
+    schedule("0 1 0 1/1 * ? *", sunTimes)
     log ("Initialize exit", "INFO")  
     if ((!settings?.homieDiscovery) && (!settings?.HAStatestream)) devSummary(null)
 
@@ -1217,6 +1220,7 @@ def mqttChange(evt) {  // Currently all types of devices (SWITCH DIMMER CONTACT)
         else mqtt.publishMsg (topic,newLevel.toString(),1,false)
     } 
 }    
+
 
 
 def abort (where) {
@@ -1910,8 +1914,10 @@ def currentHSB() {
                 // mqtt.publishMsg (sTopic," ",1,true)
                 mqtt.publishMsg (sTopic+'/$datatype','enum',1,true,atomicState.suppress) 
                 mqtt.publishMsg (sTopic+'/$retained','true',1,true,atomicState.suppress) 
-                mqtt.publishMsg (sTopic+'/$settable','true',1,true,atomicState.suppress) 
-                mqtt.publishMsg (sTopic+'/$format',"[armAway, armHome, armNight, disarm, armRules, disarmRules, disarmAll, armAll, cancelAlerts, unknown]",1,true,atomicState.suppress)
+                if (settings?.allowHSMControl) mqtt.publishMsg (sTopic+'/$settable','true',1,true,atomicState.suppress) 
+                else mqtt.publishMsg (sTopic+'/$settable','false',1,true,atomicState.suppress)
+                if (settings?.allowHSMDisarm) mqtt.publishMsg (sTopic+'/$format',"[armAway, armHome, armNight, disarm, armRules, disarmRules, disarmAll, armAll, cancelAlerts, blocked, unknown]",1,true,atomicState.suppress)
+                else mqtt.publishMsg (sTopic+'/$format',"[armAway, armHome, armNight, armRules, armAll, cancelAlerts, unknown]",1,true,atomicState.suppress)
         }
 }
 
@@ -1921,7 +1927,7 @@ def sunTimes() {
 			    normName = normalize(name)
                 sTopic=	"homie/${atomicState.normHubName}/hub/"
                 mqtt.publishMsg (sTopic+'$name',settings?.hubName,1,true)
-                if (!modes) mqtt.publishMsg (sTopic+'$properties',"sunset,sunrise,hsm",1,true)
+                if (!settings?.modes) mqtt.publishMsg (sTopic+'$properties',"sunset,sunrise,hsm",1,true)
                 else mqtt.publishMsg (sTopic+'$properties',"sunset,sunrise,mode,hsm",1,true)
                 mqtt.publishMsg (sTopic+'$type',"sensor",1,true)
 			    sTopic=	"homie/${atomicState.normHubName}/hub/sunrise"
@@ -6374,17 +6380,37 @@ def commandP(name, state, payload, cmd, topic) { // 'set' command from homie for
             }
         }
         if (cmd=='hsmArm') {
-            if ("armAway, armHome, armNight, disarm, armRules, disarmRules, disarmAll, armAll, cancelAlerts".contains(state)){
-                log ("Need to $state HSM","WARN")
-                sendLocationEvent(name: "hsmSetArm", value: state)
-            return
-            }
-            else {
-                log ("Unhandled Command $cmd [$state] for hub","WARN")
-                sTopic=	"homie/${atomicState.normHubName}/hub/hsmArm"
-                mqtt.publishMsg (sTopic,'unknown',1,true)
+            sTopic=	"homie/${atomicState.normHubName}/hub/hsmArm"
+            if (!settings?.allowHSMControl) {
+                mqtt.publishMsg (sTopic,'blocked',1,true)
                 return
             }
+
+            if (settings?.allowHSMDisarm) {
+                if ("armAway, armHome, armNight, disarm, armRules, disarmRules, disarmAll, armAll, cancelAlerts".contains(state)){
+                    sendLocationEvent(name: "hsmSetArm", value: state)
+                    return
+                }
+                else {
+                    log ("Unhandled Command $cmd [$state] for hub","WARN")
+                    mqtt.publishMsg (sTopic,'unknown',1,true)
+                    return
+                }
+            }
+            else { 
+                    if ("armAway, armHome, armNight, armRules, armAll, cancelAlerts".contains(state)){
+                    sendLocationEvent(name: "hsmSetArm", value: state)
+                    return
+                }
+                else {
+                    log ("Unhandled Command $cmd [$state] for hub","WARN")
+                    mqtt.publishMsg (sTopic,'unknown',1,true)
+                    return
+                }
+            }
+
+                
+
 /*            
             if (state=='disarm') {
                 log ("Need to disarm HSM","WARN")
