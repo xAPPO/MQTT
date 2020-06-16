@@ -1,4 +1,7 @@
-IN PROGRESS  THIS IS NOT UPDATED FOR BETA 3 yet, but will be shortly
+If you update to beta 3c please update both the app and the MQTT client driver. Additionally if you use the MQTT text driver update that too.  The latter is much changed.  If you update it then keep a backup of the old driver as it will almost certainly need adaption (see note at the end of this document)
+
+
+IN PROGRESS  THIS IS NOT UPDATED FOR BETA 3 yet, but will be shortly - next on list .. apologies for being behind on documentation
 
 There are significant differences in the MQTT Client driver installation (ignore the below ones)
 
@@ -374,3 +377,15 @@ This option publishes a minimal but non 'homie3 / homie4' compliant homie/ tree 
 # Retain homie states
 
 Makes the homie state topics retained on the MQTT broker (normal - as per spec).  NB homie /set topics should NOT be published retained.
+
+# MQTT Text driver changes in beta 3c
+
+beta 3c . Radically changed - if using old driver keep a backup
+
+This now integrates as a standard HE Device exported to MQTT. It has no inbuilt MQTT capability but will expose an MQTT Text device that provides status and .../set update ability. It also supports prefix and suffix including html tags.    
+
+Or add it as a virtual device within the app linked to an adhoc MQTT topic.  Then you can set status and command topics via virtual devices within the app.
+
+setText() command includes both prefix and suffix, forceText() command ignores these.  
+
+MQTT ...text/set uses setText() so if you want 'raw' values make sure prefix and suffix are empty.
