@@ -82,7 +82,7 @@ def initialize() {
     if (MD5(location.hubs[0].getZigbeeId())=="202cb962ac59075b964b07152d234b70") state.myHub=true
     heartbeat()
     schedule("0/20 * * * * ? *", heartbeat)
-    version="beta 3b"
+    version="beta 3c"
     
 
 //    sendEvent (name: "Status", value: "disconnected" , isStateChange: true)
