@@ -6727,9 +6727,9 @@ def commandP(name, state, payload, cmd, topic) { // 'set' command from homie for
         // >> @jwilliams
 		if (matchDevice != null) {
 			setStatus = ""
-			ArmValues = "armed night, armed home, armed away"
+			ArmValues = "armed night,armed home,armed away"
 			if (ArmValues.contains(state.toLowerCase())) {
-				if (mqttKeypadMode == "No Keycode Needed") {
+				if (mqttKeypadMode == "No Keycode needed") {
 					setStatus = state
 				} else if ((mqttKeypadMode == "Keycode to Arm only" || mqttKeypadMode == "Keycode to Arm/Disarm") && mqttKeypadCode == payload[1]) {
 					setStatus = state
