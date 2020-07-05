@@ -1,4 +1,4 @@
-If you update to beta 3c please update both the app and the MQTT client driver. Additionally if you use the MQTT text driver update that too.  The latter is much changed.  If you update it then keep a backup of the old driver as it will almost certainly need adaption (see note at the end of this document)
+If you update to beta 3d please update both the app and the MQTT client driver. Additionally if you use the MQTT text driver update that too.  The latter is much changed.  If you update it then keep a backup of the old driver as it will almost certainly need adaption (see note at the end of this document)
 
 
 IN PROGRESS  THIS IS NOT UPDATED FOR BETA 3 yet, but will be shortly - next on list .. apologies for being behind on documentation
