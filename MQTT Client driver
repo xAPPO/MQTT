@@ -1,10 +1,9 @@
 // Not licensed for onward /re-distribution for any reason and in any form  - see license
 
-
 import java.security.MessageDigest
 
 metadata {
-    definition (name: "MQTT Client", namespace: "ukusa", author: "Kevin Hawkins",importUrl: "https://raw.githubusercontent.com/xAPPO/MQTT/beta3/MQTT%20Client%20driver") {
+    definition (name: "MQTT Client", namespace: "ukusa", author: "Kevin Hawkins",importUrl: "https://raw.githubusercontent.com/xAPPO/MQTT/beta/MQTT%20Client%20driver") {
         capability "Initialize"
 		capability "Presence Sensor"
         //capability "Indicator"
@@ -24,6 +23,7 @@ metadata {
 		command "reset"
         command "connect"
         command "disconnect"
+        //command "simulateError",["String"]
 		//command "setStateVar", ["String","String"]
         //command "setLogLevel", ["Integer"]
         
@@ -83,7 +83,7 @@ def initialize() {
     if (MD5(location.hubs[0].getZigbeeId())=="202cb962ac59075b964b07152d234b70") state.myHub=true
     heartbeat()
     schedule("0/20 * * * * ? *", heartbeat)
-    version="beta 3c"
+    version="beta 3d"
     
 
 //    sendEvent (name: "Status", value: "disconnected" , isStateChange: true)
@@ -111,7 +111,8 @@ def connect() {
     if (mqttState) {
         log ( "Connected to MQTT broker ${state.MQTTBroker}","BLUE")
         subscribeTopic ('homie/'+state.normHubName+'/$implementation/heartbeat')
-        sendEvent(name: "MQTTStatus", value: "Connect", isStateChange: true)  // allow continue
+        //sendEvent(name: "MQTTStatus", value: "Connect", isStateChange: true)  // allow continue
+        parent.mqttStatus ("Connect")
         state.connectionAttempts = 0
         state.seq2=0
     }
@@ -193,10 +194,12 @@ void mqttClientStatus(String message) {
         catch (e)
         {
         }
+       
         log ("Broker: ${message} Will restart in 5 seconds","ERROR")
-        runIn (4,"adviseStatus")
+        runIn (5,"adviseStatus")
        // sendEvent(name: "MQTTStatus", value: status, data: [message:message], isStateChange: true)  // will reset
-        runIn (5,"reset")  
+       // cant allow client to reconnect itself as it will have no subscriptions  (unless not clean sesssion)
+       //        runIn (5,"reset")  
     }
     else {
         log ("Broker: ${message}","INFO")
@@ -205,7 +208,8 @@ void mqttClientStatus(String message) {
             log ("MQTT broker connected","INFO")
             subscribeTopic ('homie/'+state.normHubName+'/$implementation/heartbeat')
             sendEvent (name: "presence", value: "present")
-            sendEvent(name: "MQTTStatus", value: status, data: [message:message], isStateChange: true)  // allow continue
+            parent.mqttStatus(status)
+            //sendEvent(name: "MQTTStatus", value: status, data: [message:message], isStateChange: true)  // allow continue
             // need to advise app have a connection to allow it to continue.
         }
     }
@@ -213,7 +217,8 @@ void mqttClientStatus(String message) {
 
 void adviseStatus() {
     log ("Advising app that broker is down","WARN")
-    sendEvent(name: "MQTTStatus", value: "Error:", data: [message:"reset"], isStateChange: true)  // will reset
+    parent.mqttStatus ("Error")
+    //sendEvent(name: "MQTTStatus", value: "Error:", data: [message:"reset"], isStateChange: true)  // will reset
 }
 
 def publishMsg(String topic, String payload, int qos, String retained) {  // overload for RM compatibility
@@ -352,10 +357,11 @@ def parse(String description) {
 
 	def topic=topicFull.split('/')
 	def topicCount=topic.size()
-	def payload=interfaces.mqtt.parseMessage(description).payload.split(',')
+    def payloadFull=interfaces.mqtt.parseMessage(description).payload
+	def payload=payloadFull.split(',')
     //log (topicFull + "   " + payload, "INFO")
-
-    if (payload[0].startsWith ('{')) json="true" else json="false"
+    //
+    if (payloadFull.startsWith('{') && payloadFull.endsWith('}')) json="true" else json="false"
     if (topicFull.startsWith('homie/'+state.normHubName+'/$implementation/heartbeat')) {
         //log ("Rx: heartbeat [${payload[0]}]   $device.currentWaiting","DEBUG")
         if (device.currentWaiting != "none"){
@@ -647,7 +653,7 @@ def parse(String description) {
             sequence=state.seq2.toString()
 		if (topicCount==6) {   // rather than these why not just check last topic  - endsWith("/set")
 			if ((topic[5]=="set")&&(topic[4]=="rgb")) {
-                parent.commandP(topic[2],payload[0],payload,topic[3],interfaces.mqtt.parseMessage(description))
+                parent.commandP(topic[2],payload[0],payload,payloadFull,topic[3],interfaces.mqtt.parseMessage(description),json)
 				//def evt12 = createEvent(name: "Command", value: topic[2], data: [state: payload[0], payload: payload, seq: sequence, cmd: topic[3],topic: interfaces.mqtt.parseMessage(description)], isStateChange: true)
 				log ("Received this " + payload + "  " + payload.size(), "TRACE")
                 return //evt12					
@@ -655,7 +661,7 @@ def parse(String description) {
         }      
         else if (topicCount==5) { 
 			if (topic[4]=="set") {
-                parent.commandP(topic[2],payload[0],payload,topic[3],interfaces.mqtt.parseMessage(description))
+                parent.commandP(topic[2],payload[0],payload,payloadFull,topic[3],interfaces.mqtt.parseMessage(description),json)
 				//def evt12 = createEvent(name: "Command", value: topic[2], data: [state: payload[0], payload: payload,seq: sequence, cmd: topic[3],topic: interfaces.mqtt.parseMessage(description)], isStateChange: true)
 				log ("Received this " + payload + "  " + payload.size(), "TRACE")
                 return //evt12					
@@ -859,7 +865,7 @@ def parse(String description) {
         top=interfaces.mqtt.parseMessage(description).topic
 		if (!top.startsWith("SHAC/")) log ("ad hoc MQTT parse  $top       ${payload[0]}", "LOG")
         log ("ad hoc MQTT parse  $top       ${payload[0]}", "TRACE")
-        parent.lookupP(payload[0],interfaces.mqtt.parseMessage(description).payload,interfaces.mqtt.parseMessage(description).topic, json)  // replacement for event call
+        parent.lookupP(payload[0],payloadFull,interfaces.mqtt.parseMessage(description).topic, json)  // replacement for event call
        // if (json=="true") sendEvent (name: "Lookup", value: interfaces.mqtt.parseMessage(description).payload, data: [topic: interfaces.mqtt.parseMessage(description).topic,seq: sequence,json: json], isStateChange: true)
 	   // else sendEvent (name: "Lookup", value: payload[0], data: [topic: interfaces.mqtt.parseMessage(description).topic,seq: sequence,json: json], isStateChange: true)
 	}
@@ -894,6 +900,17 @@ def disconnect()
             log ("Disconnecting failed : ${e.message}", "WARN")
         }
 	}
+
+def simulateError (type) {
+            try {
+        	interfaces.mqtt.disconnect()
+            log ("Force Disconnected MQTT", "INFO")
+            } catch(e) {
+            log ("Disconnecting : ${e.message}", "WARN")
+            }
+            parent.mqttStatus ("Error")
+}
+    
 	
 def setStateVar(var,value,value2=null) {	//DEPRECATED // Better to expose as attributes 
     return
