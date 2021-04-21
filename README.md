@@ -1,20 +1,17 @@
 If you update to beta 3d please update both the app and the MQTT client driver. Additionally if you use the MQTT text driver update that too.  The latter is much changed.  If you update it then keep a backup of the old driver as it will almost certainly need adaption (see note at the end of this document)
 
-
-IN PROGRESS  THIS IS NOT UPDATED FOR BETA 3 yet, but will be shortly - next on list .. apologies for being behind on documentation
-
 There are significant differences in the MQTT Client driver installation (ignore the below ones)
 
 Please read the first few posts in the topic thread here.
 
 https://community.hubitat.com/t/mqtt-beta3/38013
 
-This has been 'mostly' updated now for the beta release - please let me know any issues or suggestions
+This has been 'mostly' updated now for the beta3d release - please let me know any issues or suggestions
 
 Later / release version of this read me will contain appropriate screenshots rather than just being text based
 
-Pre Release notes for beta 1 
-25th January 2020
+Release notes for beta 3d 
+25th January 2021
 
 ###########################################################################################
 
@@ -43,7 +40,7 @@ ________________________________________________________________________________
 
 # Installation Notes
 
-You must install the code for two components - the MQTT app and the MQTT client driver.  The previous (alpha4) two drivers for 'MQTT switch' and 'MQTT dimmer' are no longer required and are deprecated / will no longer function.   Instead you can now use any of the 24 Hubitat virtual drivers.  The MQTT text driver is still available (optional) but is likely not required nor has it been tested with beta.
+You must install the code for two components - the MQTT app and the MQTT client driver.  The previous (alpha4) two drivers for 'MQTT switch' and 'MQTT dimmer' are no longer required and are deprecated / will no longer function.   Instead you can now use any of the 24 Hubitat virtual drivers.  The MQTT text driver is still available (optional) but is likely not required but it has been tested with beta3d.
 
 If you have a pre alpha 5 version you may lose/have to recreate any virtual devices that you have that import devices from MQTT into HE.  If this is a concern contact me first as there is a way around it.   You might wish to retain previous devices using my now deprecated drivers for the purpose of copying the MQTT details over to the newer HE Virtual drivers.  Warning: Purging MQTT devices will delete these older devices pemanently.
 
@@ -91,7 +88,7 @@ Athoms' Homey controller also supports MQTT and the homie3 protocol. They work r
 # Initial setup:  (this now includes an install bug workaround step)
 
 1) Install both the main app MQTT code and the device driver code for MQTT Client and optionally MQTT text.
-2) Now install the app using 'Add User App' . It may hang don't worry. Do NOT install the device manually.
+2) Now install the app using 'Add User App' . It may seem to hang don't worry. Do NOT install the device manually.
 3) Go to apps and run MQTT then you need to look for a device called 'MQTT Child device driver' - manually delete this device and restart your hub.  A new device driver will be auto created
 4) Configure your mqtt broker using the MQTT Broker menu in the app.
 You must enter the IP (or URL) e.g. tcp://192.168.1.78:1883 ,  username / password are only required if your broker needs them.  NB include  tcp:// at the start of the entry.
@@ -131,7 +128,7 @@ ________________________________________________________________________________
 
  This is used to expose selected existing HE devices onto MQTT so they report their status and can be controlled via MQTT
  
- From 'Apps' run the MQTT app again and select how you would like to use to publish your devices to MQTT via MQTT Publish Formats
+ From 'Apps' run the MQTT app again and select how you would like to publish your devices to MQTT via MQTT Publish Formats
  
  You need to enable the 'homie3 protocol' option via the MQTT Publish formats 
 
@@ -159,9 +156,9 @@ HE Switch Devices > MQTT
 
 HE Dimmer Devices > MQTT
 
-click 'Update then and then 'Done'.  The tpics should appear on MQTT under a top level homie/hubname/... 
+click 'Update then and then 'Done'.  
 
-These devices will now appear on MQTT under a top level homie/hubname/...  and update status changes  and be controllable from MQTT, using .../set appended topic.
+These devices will now appear on MQTT under a top level homie/hubname/... topic  and update with state changes  and also be controllable from MQTT, using .../set appended topic.
 
 NB: (update) It appears the 'Everything' dropdown is not publishing devices corerctly to homie so please use the individual drop down for the capabiliities where possible. 
 
@@ -238,7 +235,7 @@ Firstly configure HA to use MQTT statestream by including the following in your 
 Add the included "automations.yaml" to your automations.yaml file in HA , or if you don't use this then to configuration.yaml.
 This enables bi-directional control via statestream (which is normally a status only topic).
 
-    On the third page of the app entitled  
+    On the "Discovery into HE" page  under the HA Discovery sub menu
     "MQTT Discovery Protocols > HE"
         "Home Assitant statestream" enable this
      	"Home Assitant Statestream Topic"  enter the topic name that your HA software is publishing to e.g HAStateStream50
@@ -250,6 +247,8 @@ The app will then start up which may take a minute or so and automatically disco
 The log will inform you when Home Assitant Discovery has completed.
 After completion the app will then populate the discovered device dropdown lists so you can now select which devices you are interested in.  This you can see by revisiting the third page of the app where 'Home Assistant' will now be green with a count of how many devices were found. Clicking 'Home Assistant' reveals all the drop down selectors.
 Once enabled and 'Done' the app will create child devices for those that are enabled, attempting to choose an appropriate virtual device type.  You can manually alter the device type later in HE's Devices menu if needed.
+
+Currently for control back to HA you also need to visit the Virtual Devices menu, select the device type in the top dropdown  and enable the device for MQTT in the dropdown below that. This will not be needed in beta3e.
 
 __________________________________________________________________________________________________________________________
 # f) Enable MQTT devices* to be 'mirrored' as virtual devices and controlled within HE. 
