@@ -43,7 +43,7 @@ ________________________________________________________________________________
 
 # Installation Notes
 
-You must install two components - the MQTT app and the MQTT client driver.  The previous (alpha4) two drivers for 'MQTT switch' and 'MQTT dimmer' are no longer required and are deprecated / will no longer function.   Instead you can now use any of the 24 Hubitat virtual drivers.  The MQTT text driver is still available (optional) but is likely not required nor has it been tested with beta.
+You must install the code for two components - the MQTT app and the MQTT client driver.  The previous (alpha4) two drivers for 'MQTT switch' and 'MQTT dimmer' are no longer required and are deprecated / will no longer function.   Instead you can now use any of the 24 Hubitat virtual drivers.  The MQTT text driver is still available (optional) but is likely not required nor has it been tested with beta.
 
 If you have a pre alpha 5 version you may lose/have to recreate any virtual devices that you have that import devices from MQTT into HE.  If this is a concern contact me first as there is a way around it.   You might wish to retain previous devices using my now deprecated drivers for the purpose of copying the MQTT details over to the newer HE Virtual drivers.  Warning: Purging MQTT devices will delete these older devices pemanently.
 
@@ -88,22 +88,17 @@ Athoms' Homey controller also supports MQTT and the homie3 protocol. They work r
 # Instructions: 
 (preliminary)
 
-# Initial setup:
+# Initial setup:  (this now includes an install bug workaround step)
 
-1) Install both the main app MQTT and the device driver for MQTT Client and optionally MQTT text.
-2) From 'Devices' "Add Virtual Device" selecting the "MQTT client" device driver, name the broker device as you wish, make up a Device Network ID e.g. the IP of the broker.  Important:  Do NOT create two MQTT client drivers as this causes known issues.
-3) Configure this device to access your existing MQTT broker using the 'Preferences' section on the next screen in the device driver then click 'Done'.
+1) Install both the main app MQTT code and the device driver code for MQTT Client and optionally MQTT text.
+2) Now install the app using 'Add User App' . It may hang don't worry. Do NOT install the device manually.
+3) Go to apps and run MQTT then you need to look for a device called 'MQTT Child device driver' - manually delete this device and restart your hub.  A new device driver will be auto created
+4) Configure your mqtt broker using the MQTT Broker menu in the app.
 You must enter the IP (or URL) e.g. tcp://192.168.1.78:1883 ,  username / password are only required if your broker needs them.  NB include  tcp:// at the start of the entry.
-4) Launch the MQTT app, it has three setup pages each with multiple sections , the first page covers individual devices and the second and third pages are optional. The second page is for the 'manual' importing of existing MQTT devices into HE and the third for automatic discovery of devices into HE using either homie or HA statestream 'discovery'. Configuring the second and third pages is optional.
+5) In the Configuration option the MQTT app, it has six setup pages some with sub sections. They are all optional and only needed for that named functionality
 
-On the first page click 'Configuration' and from the 'MQTT Broker' dropdown select the MQTT client device you just configured in step 3
 
-Give you hub a name in 'Hub Name'
-
-Next an important step that is required for speed:
-The MQTT app can only interact with HE devices that you give it permission to use.  To make it possible for the app to know and match the names of all your devices on the first page click 'Configuration' and then at the bottom click this button "IMPORTANT: Enable all your devices for app access<" and enable all devices by clicking the top option. Please as you use the MQTT continue to check that all devices remain enabled - especially as you add new devices.  This speeds up the app considerably rather than the fallback of having to loop through every device individually.
-
-For the time being ignore all other options and select 'Next' on the first and then second page and 'Done' on the third.
+For the time being ignore all other options and select 'Next' / 'Done' 
 .. you should see something similar to this in the log.
 
 Log:
@@ -126,7 +121,7 @@ Inparticular check that you get the "Connected as Hubitat_xxxx to MQTT broker" s
 Now choose from the key features listed above which feature(s) a) b) c) d) e) or f) you are wishing to setup the MQTT app for.
 I recommend choosing just one for now preferably a) as it is the easiest.
 
-Now follow the matching option a)-f) below that you need.....
+Now follow the specific matching option a)-f) below that you need.....
 
 Lastly several of the less obvious app configuration options are discussed right at the end of these instructions in 'Additional Notes'.  Please read those too.
 __________________________________________________________________________________________________________________________
@@ -136,11 +131,12 @@ ________________________________________________________________________________
 
  This is used to expose selected existing HE devices onto MQTT so they report their status and can be controlled via MQTT
  
- From 'Apps' run the MQTT app again and select how you would like to use to publish your devices to MQTT.
+ From 'Apps' run the MQTT app again and select how you would like to use to publish your devices to MQTT via MQTT Publish Formats
  
  You need to enable the 'homie3 protocol' option via the MQTT Publish formats 
 
- You have two choices - the standard "homie3 protocol" compatible format or a reduced (simplified) version of this.
+ You have two choices - the standard/verbose "homie3 protocol" compatible format or a reduced/simplified version of this which you may find easier to start with.
+ Turn Complete and Compliant OFF for the simplified version.
  The previous alpha4 'Hubitat Basic' topic structure is now deprecated and replaced by the simplified option above.
  
 homie3:  and simplified topic
@@ -155,17 +151,17 @@ homie3: full version
 
 	includes additional configuration topics required for homie3 compliance
 
-When enabling the homie protocol there is an additional '..retain homie states' option. Enabling this causes the last reported state of your devices to be retained on your MQTT broker. Any new device device connecting to MQTT will receive these states , although these may be old (residual) values.  If you disable it any new device connecting to MQTT will get no information until your device updates its state, but the value will be known to be current.  This should normally be left enabled.
+When enabling the homie protocol there is an additional '..retain homie states' option. Enabling this causes the last reported state of your devices to be retained on your MQTT broker. Any new device device connecting to MQTT will then receive these states , although these may be old (residual) values.  If you disable it any new device connecting to MQTT will get no information until your device updates its state, but the value will be known to be current.  This should normally be left enabled.
 
-Now enable which of your HE devices that you wish to publish to MQTT by selecting them in the provided dropdowns. A dropdown is provided for each capability**. If you have no devices of that capability on HE then the dropdown will not be shown
+Now enable which of your HE devices you wish to publish to MQTT by selecting them in the provided dropdowns in the 'Publish these HE devices to MQTT" menu. A dropdown is provided for each capability**. If you have no devices of that capability on HE then the dropdown will not be shown
 
 HE Switch Devices > MQTT
 
 HE Dimmer Devices > MQTT
 
-click 'Update then 'Next' and 'Next' and then 'Done'
+click 'Update then and then 'Done'.  The tpics should appear on MQTT under a top level homie/hubname/... 
 
-These devices will now update status changes to MQTT and be controllable from MQTT, using .../set appended topic.
+These devices will now appear on MQTT under a top level homie/hubname/...  and update status changes  and be controllable from MQTT, using .../set appended topic.
 
 NB: (update) It appears the 'Everything' dropdown is not publishing devices corerctly to homie so please use the individual drop down for the capabiliities where possible. 
 
