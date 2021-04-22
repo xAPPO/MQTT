@@ -138,7 +138,8 @@ preferences {  // can't use atomicState vars in this section
                 input "musicplayers", "capability.musicPlayer",hideWhenEmpty: true, multiple: true, required: false, title: "<b>Music Players</b>", submitOnChange: false
                 input "outlets", "capability.outlet",hideWhenEmpty: true, multiple: true, required: false, title: "<b>Outlets</b>", submitOnChange: false
                 input "powersensors", "capability.powerMeter",hideWhenEmpty: true, multiple: true, required: false, title: "<b>Power sensors</b>", submitOnChange: false
-				input "presencesensors", "capability.presenceSensor",hideWhenEmpty: true, multiple: true, required: false, title: "<b>Presence sensors</b>", submitOnChange: false
+                input "energysensors", "capability.energyMeter",hideWhenEmpty: true, multiple: true, required: false, title: "<b>Energy sensors</b>", submitOnChange: false
+                input "presencesensors", "capability.presenceSensor",hideWhenEmpty: true, multiple: true, required: false, title: "<b>Presence sensors</b>", submitOnChange: false
                 input "ramp", "capability.switchLevel",hideWhenEmpty: true, multiple: true, required: false, title: "<b>Ramp control via MQTT</b>", submitOnChange: false
                 input "refresh", "capability.*",hideWhenEmpty: true, multiple: true, required: false, title: "<b>Refresh (if supported by device)</b>", submitOnChange: false  //Casey
                 input "relayswitches", "capability.relaySwitch",hideWhenEmpty: true, multiple: true, required: false, title: "<b>Relay Switches</b>", submitOnChange: false
@@ -1573,6 +1574,7 @@ def sensorSubscribes(count) {   // These are report only attributes- they have n
         count = registerSpecificAttribute (carbonmonoxidesensors,count,'carbonmonoxide','sensorDevices')
         count = registerSpecificAttribute (voltagesensors,count,'voltage','sensorDevices')
         count = registerSpecificAttribute (powersensors,count,'power','sensorDevices')
+        count = registerSpecificAttribute (energysensors,count,'energy','sensorDevices')
         count = registerSpecificAttribute (watersensors,count,'water','sensorDevices')  
         count = registerSpecificAttribute (globVars,count,'variable','otherDevices')  //  ?? Not a sensor as updateable
         count = registerSpecificAttribute (gVars,count,'variable','otherDevices')  //  ?? Not a sensor as updateable
@@ -2382,6 +2384,7 @@ def synchDevices() {
     devLoop (settings?.smokesensors,"smoke","sensorDevices")
     devLoop (settings?.presencesensors,"presence","sensorDevices")
     devLoop (settings?.powersensors,"power","sensorDevices")
+    devLoop (settings?.energysensors,"energy","sensorDevices")
     devLoop (settings?.voltagesensors,"voltage","sensorDevices")
     // thermostats
     devLoop (settings?.thermostats,"temperature","thermostatDevices")
@@ -2977,7 +2980,14 @@ def HADiscoveryAdvertise (name, type="none", category="none", id='0', payON="tru
                 else if (category == "illuminance") pDevClass = ',"device_class": "illuminance"'
                 else if (category == "signal_strength") pDevClass = ',"device_class": "signal_strength"'
                 else if (category == "humidity") pDevClass = ',"device_class": "humidity"'
-                else if (category == "power") pDevClass = ',"device_class": "power"'
+                else if (category == "measure-power") {
+                    pDevClass = ',"device_class": "power"'
+                    pValTemp = ',"value_template":"{{ value | round(1) }}"'
+                }
+                else if (category == "measure-energy") {
+                    pDevClass = ',"device_class": "power"'
+                    pValTemp = ',"value_template":"{{ value | round(3) }}"'
+                }
                 else if (category == "timestamp") pDevClass = ',"device_class": "timestamp"'
                 else if (category == "pressure") pDevClass = ',"device_class": "pressure"'
 			}				
@@ -4546,21 +4556,21 @@ def otherDevices(evt, name=null, type=null, state=null, device=null, multiple=fa
             else if (xType=='power'){  // TODO is it this or 'energy' above ?
 				category='measure-power'
                 if (!atomicState.suppress){
-				    mqtt.publishMsg (sTopic+'/'+category+'/$datatype',"integer",1,true,atomicState.suppress)
-				    mqtt.publishMsg (sTopic+'/'+category+'/$unit','watts',1,true,atomicState.suppress)
+				    mqtt.publishMsg (sTopic+'/'+category+'/$datatype',"float",1,true,atomicState.suppress)
+				    mqtt.publishMsg (sTopic+'/'+category+'/$unit','W',1,true,atomicState.suppress)
 				    mqtt.publishMsg (sTopic+'/'+category+'/$format','0:999999',1,true,atomicState.suppress)
                 }
-				UOM="watts"
+				UOM="W"
 				HAtype="sensor"
 			}
             else if (xType=='energy'){  // TODO is it this or 'energy' above ?
 				category='measure-energy'
                 if (!atomicState.suppress){
-				    mqtt.publishMsg (sTopic+'/'+category+'/$datatype',"integer",1,true,atomicState.suppress)
-				    mqtt.publishMsg (sTopic+'/'+category+'/$unit','watts',1,true,atomicState.suppress)
+				    mqtt.publishMsg (sTopic+'/'+category+'/$datatype',"float",1,true,atomicState.suppress)
+				    mqtt.publishMsg (sTopic+'/'+category+'/$unit','kWh',1,true,atomicState.suppress)
 				    mqtt.publishMsg (sTopic+'/'+category+'/$format','0:999999',1,true,atomicState.suppress)
                 }
-				UOM="watts"
+				UOM="kWh"
 				HAtype="sensor"
 			}
       
@@ -4713,10 +4723,6 @@ def sensorDevices(evt, name=null, type=null, state=null, device=null, multiple=f
 				UOM="%"
 				HAtype="sensor"
 			}
-			else if (xType=='energy'){
-				category='measure-energy'   // value and unit enum KWh
-				UOM="watts"
-			}
 			else if (xType=='illuminance'){
 				category='measure-illuminance'   // value and unit enum lux
                 mqtt.publishMsg (sTopic+'/'+category+'/$datatype',"integer",1,true,atomicState.suppress)
@@ -4804,21 +4810,21 @@ def sensorDevices(evt, name=null, type=null, state=null, device=null, multiple=f
 			else if (xType=='power'){  // TODO is it this or 'energy' above ?
 				category='measure-power'
                 if (!atomicState.suppress){
-				    mqtt.publishMsg (sTopic+'/'+category+'/$datatype',"integer",1,true,atomicState.suppress)
-				    mqtt.publishMsg (sTopic+'/'+category+'/$unit','watts',1,true,atomicState.suppress)
+				    mqtt.publishMsg (sTopic+'/'+category+'/$datatype',"float",1,true,atomicState.suppress)
+				    mqtt.publishMsg (sTopic+'/'+category+'/$unit','W',1,true,atomicState.suppress)
 				    mqtt.publishMsg (sTopic+'/'+category+'/$format','0:999999',1,true,atomicState.suppress)
                 }
-				UOM="watts"
+				UOM="W"
 				HAtype="sensor"
 			}
             else if (xType=='energy'){  // TODO is it this or 'energy' above ?
 				category='measure-energy'
                 if (!atomicState.suppress){
-				    mqtt.publishMsg (sTopic+'/'+category+'/$datatype',"integer",1,true,atomicState.suppress)
-				    mqtt.publishMsg (sTopic+'/'+category+'/$unit','watts',1,true,atomicState.suppress)
+				    mqtt.publishMsg (sTopic+'/'+category+'/$datatype',"float",1,true,atomicState.suppress)
+				    mqtt.publishMsg (sTopic+'/'+category+'/$unit','kWh',1,true,atomicState.suppress)
 				    mqtt.publishMsg (sTopic+'/'+category+'/$format','0:999999',1,true,atomicState.suppress)
                 }
-				UOM="watts"
+				UOM="kWh"
 				HAtype="sensor"
 			}
 			else if (xType=='water'){
@@ -6743,7 +6749,7 @@ def findDeviceByName(name) {
     settingsDevices = [settings?.everything, settings?.alarms, settings?.batterysensors, settings?.bulbs, settings?.buttons, settings?.buttonshold, settings?.buttonsPush,
         settings?.buttonsrelease, settings?.buttonsdtap, settings?.carbonmonoxidesensors, settings?.chimes, 
         settings?.fans, settings?.garagedoors, settings?.humiditysensors, settings?.illuminancesensors, settings?.keypads, 
-        settings?.locks, settings?.motionsensors, settings?.mqtttext, settings?.musicplayers, settings?.outlets, settings?.powersensors, settings?.presencesensors,
+        settings?.locks, settings?.motionsensors, settings?.mqtttext, settings?.musicplayers, settings?.outlets, settings?.powersensors, settings?.energysensors, settings?.presencesensors,
         settings?.ramp, settings?.refresh, settings?.relayswitches, settings?.sensors, settings?.shocksensors, settings?.smokesensors, settings?.speechsynthesis, 
         settings?.tempsensors, settings?.thermostats, settings?.valves, settings?.voltagesensors, settings?.watersensors, settings?.windowshades]
         settingsDevices.find{
