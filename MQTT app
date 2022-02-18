@@ -2833,62 +2833,62 @@ def HADiscoveryAdvertise (name, type="none", category="none", id='0', payON="tru
         //pDev
         //pValTemp
         //pID 
-        pValTemp = ',"value_template":"{{ value | round(0) }}"'  // acts as convert to int
+        pValTemp = ',"state_value_template":"{{ value | round(0) }}"'  // acts as convert to int
         pValTemp=''
 		if (category == "measure-temperature")  { 
             return
 		    pDevClass = ',"device_class": "temperature"'
-		    if (tempUnits=="Celsius x.x°C")	pValTemp = ',"value_template":"{{ value | round(1) }}"'
-            else if (tempUnits=="Fahrenheit x.x°F")	pValTemp = ',"value_template":"{{ value | round(1) }}"'
+		    if (tempUnits=="Celsius x.x°C")	pValTemp = ',"state_value_template":"{{ value | round(1) }}"'
+            else if (tempUnits=="Fahrenheit x.x°F")	pValTemp = ',"state_value_template":"{{ value | round(1) }}"'
 		}
 		else if (category == "measure-humidity")  { 
             return
 		    pDevClass = ',"device_class": "humidity"'
-		    //if (tempUnits=="Celsius x.x°C")	pValTemp = ',"value_template":"{{ value | round(1) }}"'
-            //else if (tempUnits=="Fahrenheit x.x°F")	pValTemp = ',"value_template":"{{ value | round(1) }}"'
+		    //if (tempUnits=="Celsius x.x°C")	pValTemp = ',"state_value_template":"{{ value | round(1) }}"'
+            //else if (tempUnits=="Fahrenheit x.x°F")	pValTemp = ',"state_value_template":"{{ value | round(1) }}"'
 		}
         else if (category == "heating-setpoint")  { 
 		    //pDevClass = ',"device_class": "hsetpoint"'
             //pDevClass = ',"device_class": "hvac"'
             pDevClass=''
-		    if (tempUnits=="Celsius x.x°C")	pValTemp = ',"value_template":"{{ value | round(1) }}"'
-            else if (tempUnits=="Fahrenheit x.x°F")	pValTemp = ',"value_template":"{{ value | round(1) }}"'
+		    if (tempUnits=="Celsius x.x°C")	pValTemp = ',"state_value_template":"{{ value | round(1) }}"'
+            else if (tempUnits=="Fahrenheit x.x°F")	pValTemp = ',"state_value_template":"{{ value | round(1) }}"'
 		}
         else if (category == "cooling-setpoint")  {
             return
 		    pDevClass = ',"device_class": "csetpoint"'
-		    if (tempUnits=="Celsius x.x°C")	pValTemp = ',"value_template":"{{ value | round(1) }}"'
-            else if (tempUnits=="Fahrenheit x.x°F")	pValTemp = ',"value_template":"{{ value | round(1) }}"'
+		    if (tempUnits=="Celsius x.x°C")	pValTemp = ',"state_value_template":"{{ value | round(1) }}"'
+            else if (tempUnits=="Fahrenheit x.x°F")	pValTemp = ',"state_value_template":"{{ value | round(1) }}"'
 		}
         else if (category == "mode")  {
             return
 		    pDevClass = ',"device_class": "mode"'
-		    //if (tempUnits=="Celsius x.x°C")	pValTemp = ',"value_template":"{{ value | round(1) }}"'
-            //else if (tempUnits=="Fahrenheit x.x°F")	pValTemp = ',"value_template":"{{ value | round(1) }}"'
+		    //if (tempUnits=="Celsius x.x°C")	pValTemp = ',"state_value_template":"{{ value | round(1) }}"'
+            //else if (tempUnits=="Fahrenheit x.x°F")	pValTemp = ',"state_value_template":"{{ value | round(1) }}"'
 		}
         else if (category == "modes")  { 
             return
 		    pDevClass = ',"device_class": "modes"'
-		    //if (tempUnits=="Celsius x.x°C")	pValTemp = ',"value_template":"{{ value | round(1) }}"'
-            //else if (tempUnits=="Fahrenheit x.x°F")	pValTemp = ',"value_template":"{{ value | round(1) }}"'
+		    //if (tempUnits=="Celsius x.x°C")	pValTemp = ',"state_value_template":"{{ value | round(1) }}"'
+            //else if (tempUnits=="Fahrenheit x.x°F")	pValTemp = ',"state_value_template":"{{ value | round(1) }}"'
 		}
         else if (category == "state")  { 
             return
 		    pDevClass = ',"device_class": "state"'
-		    //if (tempUnits=="Celsius x.x°C")	pValTemp = ',"value_template":"{{ value | round(1) }}"'
-            //else if (tempUnits=="Fahrenheit x.x°F")	pValTemp = ',"value_template":"{{ value | round(1) }}"'
+		    //if (tempUnits=="Celsius x.x°C")	pValTemp = ',"state_value_template":"{{ value | round(1) }}"'
+            //else if (tempUnits=="Fahrenheit x.x°F")	pValTemp = ',"state_value_template":"{{ value | round(1) }}"'
 		}
         else if (category == "fanmode")  { 
             return
 		    pDevClass = ',"device_class": "fanmode"'
-		    //if (tempUnits=="Celsius x.x°C")	pValTemp = ',"value_template":"{{ value | round(1) }}"'
-            //else if (tempUnits=="Fahrenheit x.x°F")	pValTemp = ',"value_template":"{{ value | round(1) }}"'
+		    //if (tempUnits=="Celsius x.x°C")	pValTemp = ',"state_value_template":"{{ value | round(1) }}"'
+            //else if (tempUnits=="Fahrenheit x.x°F")	pValTemp = ',"state_value_template":"{{ value | round(1) }}"'
 		}        
         else if (category == "fanmodes")  { 
             return
 		    pDevClass = ',"device_class": "fanmodes"'
-		    //if (tempUnits=="Celsius x.x°C")	pValTemp = ',"value_template":"{{ value | round(1) }}"'
-            //else if (tempUnits=="Fahrenheit x.x°F")	pValTemp = ',"value_template":"{{ value | round(1) }}"'
+		    //if (tempUnits=="Celsius x.x°C")	pValTemp = ',"state_value_template":"{{ value | round(1) }}"'
+            //else if (tempUnits=="Fahrenheit x.x°F")	pValTemp = ',"state_value_template":"{{ value | round(1) }}"'
 		}
         else {
             log("Category Was " + category , "KH")
@@ -2906,24 +2906,24 @@ def HADiscoveryAdvertise (name, type="none", category="none", id='0', payON="tru
 			//pOFF = ',"payload_off":"'+payOFF+'"'
 			pIcon = '' // ',"icon":"mdi:power"'
 			pDev = ''
-			pValTemp = ',"value_template":"{{ value }}"'
+			pValTemp = ',"state_value_template":"{{ value }}"'
 			if (type=="switch") payload='{'+pName+pAvail+pAvailPay+pNotAvailPay+pUID+pState+pCmd+pUOM+pON+pOFF+pIcon+pDev+pValTemp+pID+'}'
 			if (type=="light") {
 				pOnType = ',"on_command_type":"first"'
 				pBriState = ',"brightness_state_topic":"' + sDimTopic + '"'
 				pBriCmd = ',"brightness_command_topic":"' + sDimTopic + '/set"'
-				pBriTemp= ',"brightness_value_template":"{{ value }}"'
+				pBriTemp= ',"brightness_state_value_template":"{{ value }}"'
 				pBriScale = ',"brightness_scale":100'
 				if (category=="colour") {
 					pColState = ',"color_temp_state_topic": "' + sColorTopic + '-temperature/temp"'
 					pColTempCmd = ',"color_temp_command_topic": "' + sColorTopic + '-temperature/set"'
-					//pColTempVal = ',"color_temp_value_template": "{{ ((value | float / 100) * (500 - 153)) + 153  }}"'  
-					pColTempVal = ',"color_temp_value_template": "{{ value | round(0)  }}"'  //@jwilliams
+					//pColTempVal = ',"color_temp_state_value_template": "{{ ((value | float / 100) * (500 - 153)) + 153  }}"'  
+					pColTempVal = ',"color_temp_state_value_template": "{{ value | round(0)  }}"'  //@jwilliams
                     //pHSState = ',"hs_state_topic": "' + sColorTopic + '/hsv"'
                     pHSState = ',"hs_state_topic": "' + sColorTopic +'"'
 					pHSCmd = ',"hs_command_topic": "' + sColorTopic + '/set"'
-					//pHSValTemp = ',"hs_value_template": "{{ value_json.h }},{{ value_json.s }}"'
-                    pHSValTemp = ',"hs_value_template":"' + "{{value.split(',')[0]}},{{value.split(',')[1]}}" + '"'
+					//pHSValTemp = ',"hs_state_value_template": "{{ value_json.h }},{{ value_json.s }}"'
+                    pHSValTemp = ',"hs_state_value_template":"' + "{{value.split(',')[0]}},{{value.split(',')[1]}}" + '"'
 					HAtype="light"  // for discovery
 					payload='{'+pName+pAvail+pAvailPay+pNotAvailPay+pUID+pState+pCmd+pUOM+pON+pOFF+pIcon+pDev+pValTemp+pOnType+pBriState+pBriCmd+pBriTemp+pBriScale+pColState+pColTempCmd+pColTempVal+pHSState+pHSCmd+pHSValTemp+pID+'}'
 				}
@@ -2943,7 +2943,7 @@ def HADiscoveryAdvertise (name, type="none", category="none", id='0', payON="tru
 			//if (UOM!='') pUOM = ',"unit_of_measurement":"'+UOM+'"' else pUOM=''
 			pIcon = '' // ',"icon":"mdi:power"'
 			pDev = ''
-			pValTemp = ',"value_template":"{{ value }}"'
+			pValTemp = ',"state_value_template":"{{ value }}"'
 			if (type=="binary_sensor") {
 				// HA categories for various binary sensors https://www.home-assistant.io/components/binary_sensor/
 				// TODO must map binary_sensor payload values to ON OFF
@@ -2967,11 +2967,11 @@ def HADiscoveryAdvertise (name, type="none", category="none", id='0', payON="tru
 				pUOM=',"unit_of_measurement": "'+UOM+'"'
 				pON=''  // remove on:off states from sensor adverts ? Do I need to be more selective say with some (analogue?) 'sensors' that might also have an on:off state ? TODO check
 				pOFF=''
-                pValTemp = ',"value_template":"{{ value | round(0) }}"'  // acts as convert to int
+                pValTemp = ',"state_value_template":"{{ value | round(0) }}"'  // acts as convert to int
 				if (category == "measure-temperature")  { 
 				    pDevClass = ',"device_class": "temperature"'
-				    if (tempUnits=="Celsius x.x°C")	pValTemp = ',"value_template":"{{ value | round(1) }}"'
-                    else if (tempUnits=="Fahrenheit x.x°F")	pValTemp = ',"value_template":"{{ value | round(1) }}"'
+				    if (tempUnits=="Celsius x.x°C")	pValTemp = ',"state_value_template":"{{ value | round(1) }}"'
+                    else if (tempUnits=="Fahrenheit x.x°F")	pValTemp = ',"state_value_template":"{{ value | round(1) }}"'
 				}
                 else if (category == "measure-battery") pDevClass = ',"device_class": "battery"'
                 else if (category == "illuminance") pDevClass = ',"device_class": "illuminance"'
@@ -2995,7 +2995,7 @@ def HADiscoveryAdvertise (name, type="none", category="none", id='0', payON="tru
 			pUOM = ''
 			pIcon = '' // ',"icon":"mdi:lock"'
 			pDev = ''
-			pValTemp = ',"value_template":"{{ value }}"'
+			pValTemp = ',"state_value_template":"{{ value }}"'
 			payload='{'+pName+pAvail+pAvailPay+pNotAvailPay+pUID+pState+pCmd+pUOM+pLock+pUnlock+pLocked+pUnlocked+pIcon+pDev+pValTemp+pID+'}'
     }
     else if (type=="shade") {
@@ -3013,7 +3013,7 @@ def HADiscoveryAdvertise (name, type="none", category="none", id='0', payON="tru
         pUOM = ''
         pIcon = '' // ',"icon":"mdi:garage"'
         pDev = ''
-        pValTemp = ',"value_template":"{{ value }}"'
+        pValTemp = ',"state_value_template":"{{ value }}"'
         payload='{'+pName+pAvail+pAvailPay+pNotAvailPay+pUID+pState+pCmd+pPos+pPosCmd+pUOM+pOPEN+pSTOP+pCLOSE+pIcon+pDev+pValTemp+pID+'}'
         type='cover'  //revert to cover
     } 
@@ -3028,7 +3028,7 @@ def HADiscoveryAdvertise (name, type="none", category="none", id='0', payON="tru
         pUOM = ''
         pIcon = '' // ',"icon":"mdi:garage"'
         pDev = ''
-        pValTemp = ',"value_template":"{{ value }}"'
+        pValTemp = ',"state_value_template":"{{ value }}"'
         payload='{'+pName+pAvail+pAvailPay+pNotAvailPay+pUID+pState+pCmd+pUOM+pOPEN+pSTOP+pCLOSE+pIcon+pDev+pValTemp+pID+'}'
     }
     else if (type=="alarm_control_panel") {
