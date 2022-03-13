@@ -1,3 +1,17 @@
+Note March 2022:  Next version  Beta 4
+
+     Beta 3e is imminent (is available now via PM request)  - it will will be (re)named beta 4 upon public posting.  It has hundreds of improvements, enahancements, bug fixes and so is the recommended way to proceed if you are uisng this application.  It will be posted alongside beta 3d to this repository shortly.  Once it is posted that will become the supported version and users of beta 3d will be expected to upgrade for ongoiung support.   Beta 4 will become the release version once any bugs are eradicated.
+     
+     I have learned that 80% of my support time is spent with users new to MQTT and I'm afraid I do not have the resources to provide that level of support. So this MQTT app is for competent users who understand MQTT and why they are using it.  There are many other MQTT applications now available for MQTT and if you are exploring these are probably better suited to you needs.    Personal circumstances have changed for me and I need to focus on my family and my own HA system going forward so here's my app and I will address and hopefully fix any issues and deal withwell constructed questions and requests but the remainder I must defer on.   Enjoy beta v4 when it becomes available, it's feature complete and pretty solid but will still  benefit from some device expansion over time,  as is the nature of MQTT.
+     
+An updated README for beta 3e / beta 4 will be released alongside beta 4
+     
+===============================================================================================================================================================================
+
+
+
+
+
 If you update to beta 3d please update both the app and the MQTT client driver. Additionally if you use the MQTT text driver update that too.  The latter is much changed.  If you update it then keep a backup of the old driver as it will almost certainly need adaption (see note at the end of this document)
 
 There are significant differences in the MQTT Client driver installation (ignore the below ones)
